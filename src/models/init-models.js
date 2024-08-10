@@ -1,26 +1,27 @@
-var DataTypes = require("sequelize").DataTypes;
-var _Attendance = require("./Attendance");
-var _Bus = require("./Bus");
-var _Driver = require("./Driver");
-var _Journey = require("./Journey");
-var _Notification = require("./Notification");
-var _Parent = require("./Parent");
-var _Role = require("./Role");
-var _Student = require("./Student");
-var _Teacher = require("./Teacher");
-var _User = require("./User");
+import _sequelize from "sequelize";
+const DataTypes = _sequelize.DataTypes;
+import _Attendance from  "./Attendance.js";
+import _Bus from  "./Bus.js";
+import _Driver from  "./Driver.js";
+import _Journey from  "./Journey.js";
+import _Notification from  "./Notification.js";
+import _Parent from  "./Parent.js";
+import _Role from  "./Role.js";
+import _Student from  "./Student.js";
+import _Teacher from  "./Teacher.js";
+import _User from  "./User.js";
 
-function initModels(sequelize) {
-  var Attendance = _Attendance(sequelize, DataTypes);
-  var Bus = _Bus(sequelize, DataTypes);
-  var Driver = _Driver(sequelize, DataTypes);
-  var Journey = _Journey(sequelize, DataTypes);
-  var Notification = _Notification(sequelize, DataTypes);
-  var Parent = _Parent(sequelize, DataTypes);
-  var Role = _Role(sequelize, DataTypes);
-  var Student = _Student(sequelize, DataTypes);
-  var Teacher = _Teacher(sequelize, DataTypes);
-  var User = _User(sequelize, DataTypes);
+export default function initModels(sequelize) {
+  const Attendance = _Attendance.init(sequelize, DataTypes);
+  const Bus = _Bus.init(sequelize, DataTypes);
+  const Driver = _Driver.init(sequelize, DataTypes);
+  const Journey = _Journey.init(sequelize, DataTypes);
+  const Notification = _Notification.init(sequelize, DataTypes);
+  const Parent = _Parent.init(sequelize, DataTypes);
+  const Role = _Role.init(sequelize, DataTypes);
+  const Student = _Student.init(sequelize, DataTypes);
+  const Teacher = _Teacher.init(sequelize, DataTypes);
+  const User = _User.init(sequelize, DataTypes);
 
   Notification.belongsTo(Attendance, { as: "attendance", foreignKey: "attendanceID"});
   Attendance.hasMany(Notification, { as: "Notifications", foreignKey: "attendanceID"});
@@ -60,6 +61,3 @@ function initModels(sequelize) {
     User,
   };
 }
-module.exports = initModels;
-module.exports.initModels = initModels;
-module.exports.default = initModels;

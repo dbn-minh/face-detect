@@ -1,6 +1,9 @@
-const Sequelize = require('sequelize');
-module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('Driver', {
+import _sequelize from 'sequelize';
+const { Model, Sequelize } = _sequelize;
+
+export default class Driver extends Model {
+  static init(sequelize, DataTypes) {
+  return super.init({
     driverID: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
@@ -41,4 +44,5 @@ module.exports = function(sequelize, DataTypes) {
       },
     ]
   });
-};
+  }
+}
