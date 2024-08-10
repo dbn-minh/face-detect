@@ -1,6 +1,7 @@
 export default class DriverController {
     static async getDriverDetails(req, res) {
         // Function to get driver details
+        print('test')
     }
 
     static async getDriverProfile(req, res) {

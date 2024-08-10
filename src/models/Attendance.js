@@ -1,6 +1,9 @@
-const Sequelize = require('sequelize');
-module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('Attendance', {
+import _sequelize from 'sequelize';
+const { Model, Sequelize } = _sequelize;
+
+export default class Attendance extends Model {
+  static init(sequelize, DataTypes) {
+  return super.init({
     attendanceID: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
@@ -68,4 +71,5 @@ module.exports = function(sequelize, DataTypes) {
       },
     ]
   });
-};
+  }
+}
