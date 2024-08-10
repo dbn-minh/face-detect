@@ -25,8 +25,6 @@ export default function initModels(sequelize) {
 
   Notification.belongsTo(Attendance, { as: "attendance", foreignKey: "attendanceID"});
   Attendance.hasMany(Notification, { as: "Notifications", foreignKey: "attendanceID"});
-  Journey.belongsTo(Bus, { as: "bus", foreignKey: "busID"});
-  Bus.hasMany(Journey, { as: "Journeys", foreignKey: "busID"});
   Bus.belongsTo(Driver, { as: "driver", foreignKey: "driverID"});
   Driver.hasMany(Bus, { as: "Buses", foreignKey: "driverID"});
   Journey.belongsTo(Driver, { as: "driver", foreignKey: "driverID"});

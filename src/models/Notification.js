@@ -25,6 +25,10 @@ export default class Notification extends Model {
     message: {
       type: DataTypes.STRING(255),
       allowNull: false
+    },
+    image: {
+      type: DataTypes.BLOB,
+      allowNull: true
     }
   }, {
     sequelize,

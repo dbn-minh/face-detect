@@ -10,14 +10,6 @@ export default class Journey extends Model {
       allowNull: false,
       primaryKey: true
     },
-    busID: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'Bus',
-        key: 'busID'
-      }
-    },
     driverID: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -45,13 +37,6 @@ export default class Journey extends Model {
         using: "BTREE",
         fields: [
           { name: "journeyID" },
-        ]
-      },
-      {
-        name: "busID",
-        using: "BTREE",
-        fields: [
-          { name: "busID" },
         ]
       },
       {
