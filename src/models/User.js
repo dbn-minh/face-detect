@@ -10,6 +10,14 @@ export default class User extends Model {
       allowNull: false,
       primaryKey: true
     },
+    roleID: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Role',
+        key: 'roleID'
+      }
+    },
     name: {
       type: DataTypes.STRING(255),
       allowNull: false
@@ -22,13 +30,13 @@ export default class User extends Model {
       type: DataTypes.STRING(255),
       allowNull: false
     },
-    roleID: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'Role',
-        key: 'roleID'
-      }
+    password: {
+      type: DataTypes.STRING(255),
+      allowNull: false
+    },
+    refreshToken: {
+      type: DataTypes.TEXT,
+      allowNull: true
     }
   }, {
     sequelize,
