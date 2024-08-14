@@ -1,116 +1,98 @@
 import {responseData} from "../config/response.js";
-import {Sequelize, where} from "sequelize";
-import sequelize from "../config/database.js";
 import initModels from "../models/init-models.js";
-// import {del} from "express/lib/application.js";
-
+import sequelize from "../config/database.js";
 let model = initModels(sequelize);
+import {
+    getStudentsOfParent,
+    getStudentDetailsWithTeacher,
+    getStudentIDsByParentID,
+    getAttendanceIDsByStudentIDs,
+    getNotificationsByAttendanceIDs
+} from '../services/parentServices.js';
+
 
 export default class ParentController {
+    // Fetch details of students associated with the parent
     static async getParentDetails(req, res) {
-        // Function to get parent details
+        const parent_id = req.params.parent_id;
+
+        // Step 1: Get Students for the parent
+        const { error: studentError, data: students } = await getStudentsOfParent(parent_id);
+
+        if (studentError) {
+            return responseData(res, "Fail", studentError, 404);
+        }
+
+        // Step 2: Get Teacher details for each student
+        const { error: detailError, data: studentDetailsWithTeachers } = await getStudentDetailsWithTeacher(students);
+
+        if (detailError) {
+            return responseData(res, "Fail", detailError, 500);
+        }
+
+        // Return the combined data
+        return responseData(res, "Success", studentDetailsWithTeachers, 200);
+    }
+
+    // Fetch notifications for the parent based on their associated students' attendance
+    static async getNotifications(req, res) {
+        const parent_id = req.params.parent_id;
 
         try {
-            let {id} = req.params;
+            // Step 1: Get student IDs for the parent
+            const { error: studentError, data: student_ids } = await getStudentIDsByParentID(parent_id);
 
-            let parent = await model.Parent.findOne({
-                where: {ParentId: id},
-                include: [{
-                    model: model.User, as: "user"
-                }]
-            });
-            !parent ? responseData(res, "Fail", "Parent not found", 404) : null
+            // Step 2: Get attendance IDs for those students
+            const { error: attendanceError, data: attendance_ids } = await getAttendanceIDsByStudentIDs(student_ids);
 
-            let {address} = parent;
-            let {name, phoneNumber, email} = parent.user;
-            let data = {
-                name,
-                phoneNumber,
-                address,
-                email
+            if (attendanceError || attendance_ids.length === 0) {
+                return responseData(res, "Fail", attendanceError || "No attendance records found for these students", 404);
             }
 
-            responseData(res, "Success", data, 200);
-        } catch (e) {
-            responseData(res, "Error ...", e.message, 500);
+            // Step 3: Get notifications linked to those attendance records
+            const { error: notificationError, data: notifications } = await getNotificationsByAttendanceIDs(attendance_ids);
+
+            if (notificationError || notifications.length === 0) {
+                return responseData(res, "Fail", notificationError || "No notifications found for this parent", 404);
+            }
+
+            // Return the notifications
+            return responseData(res, "Success", notifications, 200);
+
+        } catch (error) {
+            return responseData(res, "Error", "An error occurred while fetching notifications", 500);
         }
     }
 
-    static async getNotifications(req, res) {
-        // Function to get parent notifications
-
-        try {
-            let {id} = req.params;
-
-            let notification = await model.Notification.findOne({
-                where: {notificationID: id}
-            });
-
-            responseData(res, "Success", notification, 200);
-        } catch (e) {
-            responseData(res, "Error ...", e.message, 500);
-        }
-    }
-
+    // Placeholder for bus tracking functionality (to be implemented)
     static async getBusTracking(req, res) {
-        // Function to get bus tracking info
-
-        try {
-            let {id} = req.params;
-
-            let bus = await model.Bus.findOne({
-                where: {
-                    busID: id
-                },
-                include: [{ model: model.Driver, as: 'driver' }]
-            });
-            !bus ? responseData(res, "Fail", "Bus not found", 404) : null;
-
-            let user = await model.User.findOne({
-                where: { userID: bus.driver.userID },
-                attributes: ['name', 'phoneNumber', 'email'] // Only select necessary fields
-            });
-
-            let {busID, licensePlate, currentLocation} = bus;
-            let { driverID,  } = bus.driver;
-            let {name, phoneNumber, email } = user;
-
-            let data = {
-                busID,
-                licensePlate,
-                currentLocation,
-                driver: {
-                    driverID,
-                    name,
-                    phoneNumber,
-                    email
-                }
-            };
-
-            responseData(res, "Success", data, 200);
-        } catch (e) {
-            responseData(res, "Error ...", e.message, 500);
-        }
+        // Implementation pending
     }
 
+    // Fetch the complete profile of the parent
     static async getParentProfile(req, res) {
-        // Function to get parent profile
-
         try {
-            let {id} = req.params;
+            const { parent_id } = req.params;
 
-            let PaProfile = await model.Parent.findOne({
-                where: {parentID: id}
+            // Fetch the parent's profile with all attributes
+            const PaProfile = await model.Parent.findOne({
+                where: { parent_id: parent_id },
+                include: [{
+                    model: model.User,
+                    as: 'user',
+                }]
             });
-            !PaProfile
-                ? responseData(res, "Fail", "Bus not found", 404)
-                : null
 
+            if (!PaProfile) {
+                return responseData(res, "Fail", "Parent not found", 404);
+            }
 
+            // Prepare the data to return (all attributes of the parent)
+            const data = PaProfile.toJSON(); // Converts Sequelize model instance to plain JSON
 
-            responseData(res, "Success", data, 200);
+            return responseData(res, "Success", data, 200);
         } catch (e) {
-            responseData(res, "Error ...", e.message, 500);
+            return responseData(res, "Error", e.message, 500);
         }
     }
 

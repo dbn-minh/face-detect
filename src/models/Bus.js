@@ -4,25 +4,25 @@ const { Model, Sequelize } = _sequelize;
 export default class Bus extends Model {
   static init(sequelize, DataTypes) {
   return super.init({
-    busID: {
+    bus_id: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
       allowNull: false,
       primaryKey: true
     },
-    licensePlate: {
+    license_plate: {
       type: DataTypes.STRING(50),
       allowNull: false
     },
-    driverID: {
+    driver_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'Driver',
-        key: 'driverID'
+        key: 'driver_id'
       }
     },
-    currentLocation: {
+    current_location: {
       type: "POINT",
       allowNull: true
     },
@@ -40,14 +40,14 @@ export default class Bus extends Model {
         unique: true,
         using: "BTREE",
         fields: [
-          { name: "busID" },
+          { name: "bus_id" },
         ]
       },
       {
-        name: "driverID",
+        name: "driver_id",
         using: "BTREE",
         fields: [
-          { name: "driverID" },
+          { name: "driver_id" },
         ]
       },
     ]

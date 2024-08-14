@@ -4,22 +4,22 @@ const { Model, Sequelize } = _sequelize;
 export default class Driver extends Model {
   static init(sequelize, DataTypes) {
   return super.init({
-    driverID: {
+    driver_id: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
       allowNull: false,
       primaryKey: true
     },
-    licenseNumber: {
+    license_number: {
       type: DataTypes.STRING(50),
       allowNull: false
     },
-    userID: {
+    user_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'User',
-        key: 'userID'
+        key: 'user_id'
       }
     }
   }, {
@@ -32,14 +32,14 @@ export default class Driver extends Model {
         unique: true,
         using: "BTREE",
         fields: [
-          { name: "driverID" },
+          { name: "driver_id" },
         ]
       },
       {
-        name: "userID",
+        name: "user_id",
         using: "BTREE",
         fields: [
-          { name: "userID" },
+          { name: "user_id" },
         ]
       },
     ]

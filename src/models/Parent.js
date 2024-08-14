@@ -4,7 +4,7 @@ const { Model, Sequelize } = _sequelize;
 export default class Parent extends Model {
   static init(sequelize, DataTypes) {
   return super.init({
-    parentID: {
+    parent_id: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -14,12 +14,12 @@ export default class Parent extends Model {
       type: DataTypes.STRING(255),
       allowNull: false
     },
-    userID: {
+    user_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'User',
-        key: 'userID'
+        key: 'user_id'
       }
     }
   }, {
@@ -32,14 +32,14 @@ export default class Parent extends Model {
         unique: true,
         using: "BTREE",
         fields: [
-          { name: "parentID" },
+          { name: "parent_id" },
         ]
       },
       {
-        name: "userID",
+        name: "user_id",
         using: "BTREE",
         fields: [
-          { name: "userID" },
+          { name: "user_id" },
         ]
       },
     ]
