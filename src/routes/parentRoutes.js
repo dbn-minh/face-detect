@@ -4,18 +4,15 @@ import ParentController from '../controllers/ParentController.js';
 const router = express.Router();
 
 router.get('/details/parent/:id', ParentController.getParentDetails);
-router.post('/details/parent/:id', ParentController.createParentDetails);
-router.put('/details/parent/:id', ParentController.updateParentDetails);
-
 router.get('/notification/parent/:id', ParentController.getNotifications);
+router.post('/notification', ParentController.postNotification);
+
 router.get('/tracking/:id', ParentController.getBusTracking);
 
 router.get('/profile/:parent_id', ParentController.getParentProfile);
 router.post('/profile/:parent_id', ParentController.createParentProfile);
 router.put('/profile/:parent_id', ParentController.updateParentProfile);
-router.delete('/profile/:parent_id', ParentController.deleteParentProfile);
-
-router.post('/register', ParentController.registerStudent);
-router.post('/logout', ParentController.logoutParent);
+router.post('/register', ParentController.registerStudent)
+// must have the list of unassigned students in the teacher role
 
 export default router;
