@@ -3,9 +3,7 @@ import ParentController from '../controllers/ParentController.js';
 
 const router = express.Router();
 
-router.get('/details/parent/:id', ParentController.getParentDetails);
-router.post('/details/parent/:id', ParentController.createParentDetails);
-router.put('/details/parent/:id', ParentController.updateParentDetails);
+router.get('/details    /:id', ParentController.getParentDetails);
 
 router.get('/notification/parent/:id', ParentController.getNotifications);
 router.get('/tracking/:id', ParentController.getBusTracking);

@@ -36,33 +36,6 @@ export default class ParentController {
         }
     }
 
-    static async updateParentDetails(req, res) {
-        // Function to update parent details
-
-        try {
-            let {id} = req.params;
-            let {name, phoneNumber, address, email} = req.body;
-
-            let parent = await model.Parent.findOne({
-                where: {ParentId: id},
-                include: [{model: model.User, as: 'user'}]
-            });
-
-            // let {name, phoneNumber, address, email} = parent.user
-            !parent
-                ? responseData(res, "Fail", "Parent not found", 404)
-                : await parent.user.update({name, phoneNumber, address, email})
-
-            responseData(res, "Success", parent.user, 200);
-        } catch (e) {
-            responseData(res, "Error ...", e.message, 500);
-        }
-    }
-
-    static async createParentDetails(req, res) {
-        // Function to create parent details
-    }
-
     static async getNotifications(req, res) {
         // Function to get parent notifications
 
