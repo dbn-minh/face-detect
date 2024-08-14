@@ -1,30 +1,44 @@
+import initModels from "../models/init-models.js";
+import sequelize from "../config/database.js";
+let model = initModels(sequelize);
+
 export default class ParentController {
     static async getParentDetails(req, res) {
+        console.log("req.params:", req.params);
+
         const parentID = req.params.parentID; // Assuming parentID is passed as a URL parameter
+        console.log("parentID value:", parentID);
+        console.log("Type of parentID:", typeof parentID);
 
-        try {
-            const parentDetails = await Parent.findOne({
-                where: { parentID: parentID },
-                include: [{
-                    model: User,
-                    as: 'user', // This matches the alias used in your initModels function
-                    attributes: ['name', 'phoneNumber', 'email'] // Selecting specific attributes from the User model
-                }, {
-                    model: Student,
-                    as: 'Students', // Include associated students if you want to show student's details
-                    attributes: ['studentID', 'name', 'class', 'avatar']
-                }]
-            });
+        // try {
+        const students = await model.Student.findAll({
+            where: {parentID: parentID},
+            attributes: ['studentID', 'name', 'class', 'avatar'], // Selecting relevant attributes for the students
+            // include: [
+            //     {
+            //         model: model.Teacher,
+            //         as: 'teacher', // Include the teacher associated with the student
+            //         attributes: ['teacherID', 'department'],
+            //         include: [
+            //             {
+            //                 model: model.User,
+            //                 as: 'user', // Include user details of the teacher
+            //                 attributes: ['name', 'email', 'phoneNumber']
+            //             }
+            //         ]
+            //     }
+            // ]
+        });
 
-            if (parentDetails) {
-                res.status(200).json(parentDetails);
-            } else {
-                res.status(404).json({ message: "Parent not found" });
-            }
-        } catch (error) {
-            console.error("Error fetching parent details:", error);
-            res.status(500).json({ message: "An error occurred while fetching parent details" });
-        }
+        // if (students.length > 0) {
+        //     res.status(200).json(students);
+        // } else {
+        //     res.status(404).json({ message: "No students found for this parent" });
+        // }
+    // } catch (error) {
+    //     console.error("Error fetching students and teacher details:", error);
+    //     res.status(500).json({ message: "An error occurred while fetching student and teacher details" });
+    // }
     }
 
     static async updateParentDetails(req, res) {
