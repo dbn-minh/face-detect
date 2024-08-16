@@ -2,7 +2,6 @@ import initModels from "../models/init-models.js";
 import sequelize from "../config/database.js";
 let model = initModels(sequelize);
 import bcrypt from 'bcrypt';
-// Service to get detailed student information associated with a parent
 // Function to get students by parent ID
 export const getStudentsOfParent = async (parent_id) => {
     try {
