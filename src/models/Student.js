@@ -16,7 +16,7 @@ export default class Student extends Model {
     },
     teacher_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'Teacher',
         key: 'teacher_id'
