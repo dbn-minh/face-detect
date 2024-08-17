@@ -23,28 +23,28 @@ export default function initModels(sequelize) {
   const Teacher = _Teacher.init(sequelize, DataTypes);
   const User = _User.init(sequelize, DataTypes);
 
-  Notification.belongsTo(Attendance, { as: "attendance", foreignKey: "attendanceID"});
-  Attendance.hasMany(Notification, { as: "Notifications", foreignKey: "attendanceID"});
-  Bus.belongsTo(Driver, { as: "driver", foreignKey: "driverID"});
-  Driver.hasMany(Bus, { as: "Buses", foreignKey: "driverID"});
-  Journey.belongsTo(Driver, { as: "driver", foreignKey: "driverID"});
-  Driver.hasMany(Journey, { as: "Journeys", foreignKey: "driverID"});
-  Attendance.belongsTo(Journey, { as: "journey", foreignKey: "journeyID"});
-  Journey.hasMany(Attendance, { as: "Attendances", foreignKey: "journeyID"});
-  Student.belongsTo(Parent, { as: "parent", foreignKey: "parentID"});
-  Parent.hasMany(Student, { as: "Students", foreignKey: "parentID"});
-  User.belongsTo(Role, { as: "role", foreignKey: "roleID"});
-  Role.hasMany(User, { as: "Users", foreignKey: "roleID"});
-  Attendance.belongsTo(Student, { as: "student", foreignKey: "studentID"});
-  Student.hasMany(Attendance, { as: "Attendances", foreignKey: "studentID"});
-  Student.belongsTo(Teacher, { as: "teacher", foreignKey: "teacherID"});
-  Teacher.hasMany(Student, { as: "Students", foreignKey: "teacherID"});
-  Driver.belongsTo(User, { as: "user", foreignKey: "userID"});
-  User.hasMany(Driver, { as: "Drivers", foreignKey: "userID"});
-  Parent.belongsTo(User, { as: "user", foreignKey: "userID"});
-  User.hasMany(Parent, { as: "Parents", foreignKey: "userID"});
-  Teacher.belongsTo(User, { as: "user", foreignKey: "userID"});
-  User.hasMany(Teacher, { as: "Teachers", foreignKey: "userID"});
+  Notification.belongsTo(Attendance, { as: "attendance", foreignKey: "attendance_id"});
+  Attendance.hasMany(Notification, { as: "Notifications", foreignKey: "attendance_id"});
+  Bus.belongsTo(Driver, { as: "driver", foreignKey: "driver_id"});
+  Driver.hasMany(Bus, { as: "Buses", foreignKey: "driver_id"});
+  Journey.belongsTo(Driver, { as: "driver", foreignKey: "driver_id"});
+  Driver.hasMany(Journey, { as: "Journeys", foreignKey: "driver_id"});
+  Attendance.belongsTo(Journey, { as: "journey", foreignKey: "journey_id"});
+  Journey.hasMany(Attendance, { as: "Attendances", foreignKey: "journey_id"});
+  Student.belongsTo(Parent, { as: "parent", foreignKey: "parent_id"});
+  Parent.hasMany(Student, { as: "Students", foreignKey: "parent_id"});
+  User.belongsTo(Role, { as: "role", foreignKey: "role_id"});
+  Role.hasMany(User, { as: "Users", foreignKey: "role_id"});
+  Attendance.belongsTo(Student, { as: "student", foreignKey: "student_id"});
+  Student.hasMany(Attendance, { as: "Attendances", foreignKey: "student_id"});
+  Student.belongsTo(Teacher, { as: "teacher", foreignKey: "teacher_id"});
+  Teacher.hasMany(Student, { as: "Students", foreignKey: "teacher_id"});
+  Driver.belongsTo(User, { as: "user", foreignKey: "user_id"});
+  User.hasMany(Driver, { as: "Drivers", foreignKey: "user_id"});
+  Parent.belongsTo(User, { as: "user", foreignKey: "user_id"});
+  User.hasMany(Parent, { as: "Parents", foreignKey: "user_id"});
+  Teacher.belongsTo(User, { as: "user", foreignKey: "user_id"});
+  User.hasMany(Teacher, { as: "Teachers", foreignKey: "user_id"});
 
   return {
     Attendance,

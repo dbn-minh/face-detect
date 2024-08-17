@@ -4,25 +4,25 @@ const { Model, Sequelize } = _sequelize;
 export default class Journey extends Model {
   static init(sequelize, DataTypes) {
   return super.init({
-    journeyID: {
+    journey_id: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
       allowNull: false,
       primaryKey: true
     },
-    driverID: {
+    driver_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'Driver',
-        key: 'driverID'
+        key: 'driver_id'
       }
     },
-    startTime: {
+    start_time: {
       type: DataTypes.DATE,
       allowNull: false
     },
-    endTime: {
+    end_time: {
       type: DataTypes.DATE,
       allowNull: false
     }
@@ -36,14 +36,14 @@ export default class Journey extends Model {
         unique: true,
         using: "BTREE",
         fields: [
-          { name: "journeyID" },
+          { name: "journey_id" },
         ]
       },
       {
-        name: "driverID",
+        name: "driver_id",
         using: "BTREE",
         fields: [
-          { name: "driverID" },
+          { name: "driver_id" },
         ]
       },
     ]
