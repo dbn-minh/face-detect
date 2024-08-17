@@ -4,26 +4,26 @@ const { Model, Sequelize } = _sequelize;
 export default class Attendance extends Model {
   static init(sequelize, DataTypes) {
   return super.init({
-    attendanceID: {
+    attendance_id: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
       allowNull: false,
       primaryKey: true
     },
-    studentID: {
+    student_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'Student',
-        key: 'studentID'
+        key: 'student_id'
       }
     },
-    journeyID: {
+    journey_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'Journey',
-        key: 'journeyID'
+        key: 'journey_id'
       }
     },
     boarded: {
@@ -34,11 +34,11 @@ export default class Attendance extends Model {
       type: DataTypes.DATE,
       allowNull: true
     },
-    boardedImage: {
+    boarded_image: {
       type: DataTypes.TEXT,
       allowNull: true
     },
-    alightedImage: {
+    alighted_image: {
       type: DataTypes.TEXT,
       allowNull: true
     }
@@ -52,21 +52,21 @@ export default class Attendance extends Model {
         unique: true,
         using: "BTREE",
         fields: [
-          { name: "attendanceID" },
+          { name: "attendance_id" },
         ]
       },
       {
-        name: "studentID",
+        name: "student_id",
         using: "BTREE",
         fields: [
-          { name: "studentID" },
+          { name: "student_id" },
         ]
       },
       {
-        name: "journeyID",
+        name: "journey_id",
         using: "BTREE",
         fields: [
-          { name: "journeyID" },
+          { name: "journey_id" },
         ]
       },
     ]
