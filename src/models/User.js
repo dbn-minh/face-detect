@@ -10,6 +10,7 @@ export default class User extends Model {
       allowNull: false,
       primaryKey: true
     },
+
     role_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
