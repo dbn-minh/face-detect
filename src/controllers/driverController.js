@@ -16,6 +16,7 @@ export default class DriverController {
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
+
     }
 
     // Fetch the complete profile of a driver
