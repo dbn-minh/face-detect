@@ -36,6 +36,4 @@ export const verifyToken = (req, res, next) => {
         // token không hợp lệ
         res.status(401).send(check.name)
     }
-
-
 }

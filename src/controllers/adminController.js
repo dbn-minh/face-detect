@@ -1,6 +1,5 @@
 import { responseData } from "../config/response.js";
 import * as service from "../services/adminServices.js";
-import {getAdminDetails} from "../services/adminServices.js";
 
 export default class AdminController {
     // Fetch details of a specific admin, including associated departments
