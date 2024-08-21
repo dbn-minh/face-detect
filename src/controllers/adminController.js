@@ -2,8 +2,8 @@ import { responseData } from "../config/response.js";
 import * as service from "../services/adminServices.js";
 
 export default class AdminController {
-    // Fetch details of a specific admin, including associated departments
-    static async getAdminDetails(req, res) {
+    // Fetch details of all students, parents and teachers relevant
+    static async getStudentDetails(req, res) {
         try {
             const { error, data } = await service.getAdminDetails();
 
@@ -53,12 +53,9 @@ export default class AdminController {
         // Function to get admin tracking info
     }
 
-    // Fetch the profile of the currently authenticated admin
-    static async getAdminProfile(req, res) {
+    static async getAllUsers(req, res) {
         try {
-            const user_id = req.user.user_id; // Assuming req.user contains the authenticated user's details
-
-            const { error, data } = await service.getAdminProfileById(user_id);
+            const { error, data } = await service.getAllUsersWithRoleDetails();
 
             if (error) {
                 return responseData(res, "Fail", error, 404);
@@ -70,27 +67,108 @@ export default class AdminController {
         }
     }
 
-    static async updateAdminProfile(req, res) {
-        // Function to update admin profile
-    }
+static async createNewProfile(req, res) {
+    const { role_id, name, phone_number, email, password, other } = req.body;
+    const { error, data, status } = await service.adminCreateUserService(
+      role_id,
+      name,
+      phone_number,
+      email,
+      password,
+      other
+    );
 
-    static async createAdminProfile(req, res) {
-        // Function to create admin profile
+    if (error) {
+      return responseData(res, error, "", status);
     }
+    return responseData(res, "User created successfully", data, status);
+  }
 
+  //Update Profiles by user_id
+    static async updateProfiles(req, res) {
+    const { user_id } = req.params;
+    const { role_id, name, phone_number, email, password, other } = req.body;
+
+    const { error, data, status } = await service.adminUpdateUserService(
+      user_id,
+      role_id,
+      name,
+      phone_number,
+      email,
+      password,
+      other
+    );
+
+    if (error) {
+      return responseData(res, error, "", status);
+    }
+    return responseData(res, data, "", status);
+  }
+
+  //Delete profiles by ID
     static async deleteAdminProfile(req, res) {
-        // Function to delete admin profile
+        const { user_id } = req.params;
+
+        const { error, data, status } = await service.adminDeleteUserService(user_id);
+
+        if (error) {
+            return responseData(res, error, "", status);
+        }
+        return responseData(res, data, "", status);
     }
 
     static async listPendingRegistrations(req, res) {
-        // Function to list students awaiting approval
+        const { error, data } = await service.listPendingRegistrationsService();
+
+        if (error) {
+            return responseData(res, "Fail", error, 404);
+        }
+        return responseData(res, "Success", data, 200);
     }
 
-    static async adjustBusAssignments(req, res) {
-        // Function to adjust bus assignments
+    static async getAllTeachers(req, res) {
+        const { error, data } = await service.getAllTeachersService();
+
+        if (error) {
+            return responseData(res, "Fail", error, 404);
+        }
+        return responseData(res, "Success", data, 200);
     }
 
-    static async logoutAdmin(req, res) {
-        // Function to handle admin logout
+    static async assignTeachersToStudents(req, res) {
+        try {
+            const { teacher_id, student_ids } = req.body;
+
+            // Assign the teacher to the students
+            const { error, data } = await service.assignTeacherToStudentsService(teacher_id, student_ids);
+
+            if (error) {
+                return responseData(res, "Fail", error, 404);
+            }
+
+            // Response with detailed information
+            return responseData(res, "Success", data, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
     }
+    static async updateStudentInfo(req, res) {
+        try {
+            const { student_id } = req.params;
+            const updateData = req.body;
+
+            // Update the student information
+            const { error, data } = await service.updateStudentInfoService(student_id, updateData);
+
+            if (error) {
+                return responseData(res, "Fail", error, 404);
+            }
+
+            // Response with detailed information
+            return responseData(res, "Success", data, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
 }

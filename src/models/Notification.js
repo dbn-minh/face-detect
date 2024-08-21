@@ -5,7 +5,6 @@ export default class Notification extends Model {
   static init(sequelize, DataTypes) {
   return super.init({
     notification_id: {
-
       autoIncrement: true,
       type: DataTypes.INTEGER,
       allowNull: false,

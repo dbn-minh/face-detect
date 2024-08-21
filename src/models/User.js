@@ -10,7 +10,6 @@ export default class User extends Model {
       allowNull: false,
       primaryKey: true
     },
-
     role_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -37,7 +36,7 @@ export default class User extends Model {
     },
     refresh_token: {
       type: DataTypes.TEXT,
-      allowNull: false
+      allowNull: true
     }
   }, {
     sequelize,
