@@ -21,6 +21,15 @@ export default class Driver extends Model {
         model: 'User',
         key: 'user_id'
       }
+    },
+    current_location: {
+      type: "POINT",
+      allowNull: true
+    },
+    timestamp: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: Sequelize.Sequelize.literal('CURRENT_TIMESTAMP')
     }
   }, {
     sequelize,

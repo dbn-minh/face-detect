@@ -24,7 +24,7 @@ export default class Journey extends Model {
     },
     end_time: {
       type: DataTypes.DATE,
-      allowNull: false
+      allowNull: true
     }
   }, {
     sequelize,

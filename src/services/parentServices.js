@@ -2,6 +2,8 @@ import initModels from "../models/init-models.js";
 import sequelize from "../config/database.js";
 let model = initModels(sequelize);
 import bcrypt from 'bcrypt';
+import { Op } from 'sequelize';
+
 // Function to get students by parent ID
 export const getStudentsOfParent = async (parent_id) => {
     try {
@@ -190,3 +192,72 @@ export const registerStudent = async (parent_id, studentData) => {
         return { error: "An error occurred while registering the student", data: null };
     }
 };
+
+// current_location of the relevant driver_id, current Journey included
+export const getDriverLocationsByParentId = async (parent_id) => {
+    try {
+        console.log(`Service Start: Fetching driver locations for parent_id: ${parent_id}`);
+
+        // Step 1: Get all student IDs associated with the parent
+        const { error: studentError, data: student_ids } = await getStudentIDsByParentID(parent_id);
+        console.log(`Step 1: Retrieved student_ids: ${JSON.stringify(student_ids)}`);
+
+        if (studentError || student_ids.length === 0) {
+            console.log("No students found or an error occurred while fetching students.");
+            return { error: "No students found for this parent", data: null };
+        }
+
+        // Step 2: Get the unique ongoing journey ID for each student
+        const journeys = await model.Attendance.findAll({
+            where: {
+                student_id: student_ids,
+            },
+            attributes: ['journey_id'],
+            include: [{
+                model: model.Journey,
+                as: 'journey',
+                where: {
+                    end_time: { [Op.is]: null },
+                },
+                attributes: ['journey_id'],
+                required: true // Ensures that only attendance with an ongoing journey is fetched
+            }],
+            group: ['journey_id'] // Group by journey_id to ensure uniqueness
+        });
+
+        const journey_ids = journeys.map(journey => journey.journey_id);
+        console.log(`Step 2: Retrieved current unique journey_ids: ${JSON.stringify(journey_ids)}`);
+
+        if (journey_ids.length === 0) {
+            console.log("No current journeys found for these attendance records.");
+            return { error: "No current journeys found for these attendance records", data: null };
+        }
+
+        // Step 3: Find the driver locations for the current journeys
+        const drivers = await model.Journey.findAll({
+            where: { journey_id: journey_ids },
+            attributes: ['driver_id'],
+            include: [{
+                model: model.Driver,
+                as: 'driver',
+                attributes: ['current_location'],
+            }]
+        });
+        console.log(`Step 3: Retrieved driver locations for current journeys: ${JSON.stringify(drivers)}`);
+
+        if (drivers.length === 0) {
+            console.log("No drivers found for the current journeys.");
+            return { error: "No drivers found for the current journeys", data: null };
+        }
+
+        // Step 4: Extract the current locations of all relevant drivers
+        const locations = drivers.map(driver => driver.driver.current_location);
+        console.log(`Step 4: Final driver locations to return: ${JSON.stringify(locations)}`);
+
+        return { error: null, data: locations };
+    } catch (error) {
+        console.error("Error fetching driver locations:", error);
+        return { error: "Failed to retrieve bus tracking information", data: null };
+    }
+};
+

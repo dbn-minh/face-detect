@@ -22,10 +22,6 @@ export default class Bus extends Model {
         key: 'driver_id'
       }
     },
-    current_location: {
-      type: "POINT",
-      allowNull: true
-    },
     status: {
       type: DataTypes.BOOLEAN,
       allowNull: false
