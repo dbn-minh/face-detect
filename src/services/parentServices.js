@@ -207,7 +207,7 @@ export const getDriverLocationsByParentId = async (parent_id) => {
             return { error: "No students found for this parent", data: null };
         }
 
-        // Step 2: Get the unique ongoing journey ID for each student
+        // Step 2: Get the unique ongoing journey ID for each student by checking the `end_time` in the `Journey` table
         const journeys = await model.Attendance.findAll({
             where: {
                 student_id: student_ids,
@@ -217,15 +217,14 @@ export const getDriverLocationsByParentId = async (parent_id) => {
                 model: model.Journey,
                 as: 'journey',
                 where: {
-                    end_time: { [Op.is]: null },
+                    end_time: { [Op.is]: null }, // Filter by `end_time` being `null`
                 },
                 attributes: ['journey_id'],
                 required: true // Ensures that only attendance with an ongoing journey is fetched
             }],
-            group: ['journey_id'] // Group by journey_id to ensure uniqueness
         });
 
-        const journey_ids = journeys.map(journey => journey.journey_id);
+        const journey_ids = journeys.map(journey => journey.journey.journey_id);
         console.log(`Step 2: Retrieved current unique journey_ids: ${JSON.stringify(journey_ids)}`);
 
         if (journey_ids.length === 0) {
@@ -260,4 +259,5 @@ export const getDriverLocationsByParentId = async (parent_id) => {
         return { error: "Failed to retrieve bus tracking information", data: null };
     }
 };
+
 
