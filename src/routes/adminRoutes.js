@@ -21,6 +21,7 @@ router.get('/register-students', AdminController.listPendingRegistrations);
 router.get('/teachers', AdminController.getAllTeachers);
 router.post('/assign', AdminController.assignTeachersToStudents);
 router.put('/adjust/:student_id', AdminController.updateStudentInfo);
+router.get('/tracking', AdminController.getAdminTracking);
 
 
 export default router;

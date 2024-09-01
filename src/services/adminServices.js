@@ -5,6 +5,7 @@ import {
   createRefToken,
   createToken,
 } from "../config/jwt.js";
+import {Op} from "sequelize";
 let model = initModels(sequelize);
 
 export const getAdminDetails = async () => {
@@ -490,5 +491,102 @@ export const updateStudentInfoService = async (student_id, updateData) => {
     } catch (error) {
         console.error("Error updating student information:", error);
         return { error: "An error occurred while updating the student information", data: null };
+    }
+};
+export const getAllCurrentJourneysWithLocationsStudentsAndTeachers = async () => {
+    try {
+        // Step 1: Fetch all current journeys (where `end_time` is null) and associated driver information
+        const currentJourneys = await model.Journey.findAll({
+            where: { end_time: { [Op.is]: null } },
+            attributes: ['journey_id', 'driver_id'],
+            include: [
+                {
+                    model: model.Driver,
+                    as: 'driver',
+                    attributes: ['current_location'],
+                }
+            ],
+        });
+
+        if (!currentJourneys || currentJourneys.length === 0) {
+            return { error: "No current journeys found", data: null };
+        }
+
+        // Step 2: Initialize an array to hold the detailed journey information
+        const journeyDetails = [];
+
+        // Step 3: Iterate over each journey and fetch related attendances
+        for (const journey of currentJourneys) {
+            const attendances = await model.Attendance.findAll({
+                where: { journey_id: journey.journey_id },
+                attributes: ['student_id', 'boarded', 'alighted']
+            });
+
+            // Step 4: For each attendance, fetch the student, parent, and teacher details
+            const students = [];
+            for (const attendance of attendances) {
+                const student = await model.Student.findOne({
+                    where: { student_id: attendance.student_id },
+                    attributes: ['student_id', 'name', 'class', 'parent_id', 'teacher_id'],
+                    include: [
+                        {
+                            model: model.Parent,
+                            as: 'parent',
+                            attributes: ['parent_id'],
+                            include: [{
+                                model: model.User,
+                                as: 'user',
+                                attributes: ['name', 'email', 'phone_number']
+                            }]
+                        },
+                        {
+                            model: model.Teacher,
+                            as: 'teacher',
+                            attributes: ['teacher_id', 'department'],
+                            include: [{
+                                model: model.User,
+                                as: 'user',
+                                attributes: ['name', 'email', 'phone_number']
+                            }]
+                        }
+                    ]
+                });
+
+                // Push the detailed student information to the students array
+                students.push({
+                    student_id: student.student_id,
+                    student_name: student.name,
+                    class: student.class,
+                    parent: {
+                        parent_id: student.parent.parent_id,
+                        parent_name: student.parent.user.name,
+                        parent_email: student.parent.user.email,
+                        parent_phone_number: student.parent.user.phone_number
+                    },
+                    teacher: student.teacher ? {
+                        teacher_id: student.teacher.teacher_id,
+                        teacher_name: student.teacher.user.name,
+                        teacher_email: student.teacher.user.email,
+                        teacher_phone_number: student.teacher.user.phone_number,
+                        department: student.teacher.department
+                    } : null,
+                    boarded: attendance.boarded,
+                    alighted: attendance.alighted
+                });
+            }
+
+            // Combine journey and student details
+            journeyDetails.push({
+                journey_id: journey.journey_id,
+                driver_id: journey.driver_id,
+                current_location: journey.driver.current_location,
+                students: students
+            });
+        }
+
+        return { error: null, data: journeyDetails };
+    } catch (error) {
+        console.error("Error fetching current journeys with locations, students, and teachers:", error);
+        return { error: "An error occurred while fetching journey details", data: null };
     }
 };

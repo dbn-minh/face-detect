@@ -49,10 +49,6 @@ export default class AdminController {
         }
     }
 
-    static async getAdminTracking(req, res) {
-        // Function to get admin tracking info
-    }
-
     static async getAllUsers(req, res) {
         try {
             const { error, data } = await service.getAllUsersWithRoleDetails();
@@ -170,5 +166,20 @@ static async createNewProfile(req, res) {
             return responseData(res, "Error", e.message, 500);
         }
     }
+    // Get all current bus locations grouped by journeys, with student and teacher details
+    static async getAdminTracking(req, res) {
+        try {
+            // Call the service to get all current journey locations, student, and teacher details
+            const { error, data } = await service.getAllCurrentJourneysWithLocationsStudentsAndTeachers();
 
+            if (error) {
+                return responseData(res, "Fail", error, 404);
+            }
+
+            return responseData(res, "Success", data, 200);
+        } catch (e) {
+            console.error("Error in getAdminTracking:", e.message);
+            return responseData(res, "Error", "An unexpected error occurred", 500);
+        }
+    }
 }
