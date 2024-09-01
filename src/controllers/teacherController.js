@@ -72,5 +72,24 @@ export default class TeacherController {
             return responseData(res, "Error", e.message, 500);
         }
     }
+
+    // Get the current locations of all buses associated with the teacher's students
+    static async getBusTracking(req, res) {
+        const { teacher_id } = req.params;
+
+        try {
+            // Call the service to get the drivers' locations
+            const { error, data } = await service.getDriverLocationsByTeacherId(teacher_id);
+
+            if (error) {
+                return responseData(res, "Fail", error, 404);
+            }
+
+            return responseData(res, "Success", data, 200);
+        } catch (e) {
+            console.error("Error in getBusTracking:", e.message);
+            return responseData(res, "Error", "An unexpected error occurred", 500);
+        }
+    }
 }
 
