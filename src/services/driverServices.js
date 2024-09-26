@@ -29,7 +29,6 @@ export const getDriverDetailsById = async (driver_id) => {
                 attributes: []
             }]
         });
-
         if (!students.length) {
             return { error: "No students found for this driver's journeys", data: null };
         }
