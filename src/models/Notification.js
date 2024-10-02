@@ -26,9 +26,9 @@ export default class Notification extends Model {
       type: DataTypes.STRING(255),
       allowNull: false
     },
-    image: {
-      type: DataTypes.BLOB,
-      allowNull: true
+    status: {
+      type: DataTypes.ENUM('common','alert'),
+      allowNull: false
     }
   }, {
     sequelize,

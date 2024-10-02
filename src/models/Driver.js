@@ -10,10 +10,6 @@ export default class Driver extends Model {
       allowNull: false,
       primaryKey: true
     },
-    license_number: {
-      type: DataTypes.STRING(50),
-      allowNull: false
-    },
     user_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -22,14 +18,9 @@ export default class Driver extends Model {
         key: 'user_id'
       }
     },
-    current_location: {
-      type: "POINT",
-      allowNull: true
-    },
-    timestamp: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: Sequelize.Sequelize.literal('CURRENT_TIMESTAMP')
+    license_number: {
+      type: DataTypes.STRING(50),
+      allowNull: false
     }
   }, {
     sequelize,

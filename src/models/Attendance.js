@@ -41,6 +41,11 @@ export default class Attendance extends Model {
     alighted_image: {
       type: DataTypes.TEXT,
       allowNull: true
+    },
+    status: {
+      type: DataTypes.ENUM('boarded','alighted','not alighted','completed'),
+      allowNull: true,
+      defaultValue: "boarded"
     }
   }, {
     sequelize,

@@ -10,12 +10,12 @@ export default class Journey extends Model {
       allowNull: false,
       primaryKey: true
     },
-    driver_id: {
+    bus_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Driver',
-        key: 'driver_id'
+        model: 'Bus',
+        key: 'bus_id'
       }
     },
     start_time: {
@@ -25,6 +25,10 @@ export default class Journey extends Model {
     end_time: {
       type: DataTypes.DATE,
       allowNull: true
+    },
+    status: {
+      type: DataTypes.ENUM('ongoing','completed'),
+      allowNull: false
     }
   }, {
     sequelize,
@@ -40,10 +44,10 @@ export default class Journey extends Model {
         ]
       },
       {
-        name: "driver_id",
+        name: "bus_id",
         using: "BTREE",
         fields: [
-          { name: "driver_id" },
+          { name: "bus_id" },
         ]
       },
     ]

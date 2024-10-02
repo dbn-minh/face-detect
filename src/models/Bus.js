@@ -10,21 +10,37 @@ export default class Bus extends Model {
       allowNull: false,
       primaryKey: true
     },
-    license_plate: {
-      type: DataTypes.STRING(50),
-      allowNull: false
-    },
     driver_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'Driver',
         key: 'driver_id'
       }
     },
-    status: {
-      type: DataTypes.BOOLEAN,
+    teacher_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Teacher',
+        key: 'teacher_id'
+      }
+    },
+    capacity: {
+      type: DataTypes.INTEGER,
       allowNull: false
+    },
+    license_plate: {
+      type: DataTypes.STRING(50),
+      allowNull: false
+    },
+    current_location: {
+      type: "POINT",
+      allowNull: true
+    },
+    status: {
+      type: DataTypes.ENUM('ongoing','stopped'),
+      allowNull: true
     }
   }, {
     sequelize,
@@ -44,6 +60,13 @@ export default class Bus extends Model {
         using: "BTREE",
         fields: [
           { name: "driver_id" },
+        ]
+      },
+      {
+        name: "teacher_id",
+        using: "BTREE",
+        fields: [
+          { name: "teacher_id" },
         ]
       },
     ]
