@@ -1,83 +1,129 @@
-import initModels from "../models/init-models.js";
-import sequelize from "../config/database.js";
-let model = initModels(sequelize);
+
+import {responseData} from "../config/response.js";
+
+import * as service from '../services/parentServices.js';
 
 export default class ParentController {
+    // Fetch details of students associated with the parent
     static async getParentDetails(req, res) {
-        console.log("req.params:", req.params);
+        const parent_id = req.params.parent_id;
 
-        const parentID = req.params.parentID; // Assuming parentID is passed as a URL parameter
-        console.log("parentID value:", parentID);
-        console.log("Type of parentID:", typeof parentID);
+        // Step 1: Get Students for the parent
+        const { error: studentError, data: students } = await service.getStudentsOfParent(parent_id);
 
-        // try {
-        const students = await model.Student.findAll({
-            where: {parentID: parentID},
-            attributes: ['studentID', 'name', 'class', 'avatar'], // Selecting relevant attributes for the students
-            // include: [
-            //     {
-            //         model: model.Teacher,
-            //         as: 'teacher', // Include the teacher associated with the student
-            //         attributes: ['teacherID', 'department'],
-            //         include: [
-            //             {
-            //                 model: model.User,
-            //                 as: 'user', // Include user details of the teacher
-            //                 attributes: ['name', 'email', 'phoneNumber']
-            //             }
-            //         ]
-            //     }
-            // ]
-        });
+        if (studentError) {
+            return responseData(res, "Fail", studentError, 404);
+        }
 
-        // if (students.length > 0) {
-        //     res.status(200).json(students);
-        // } else {
-        //     res.status(404).json({ message: "No students found for this parent" });
-        // }
-    // } catch (error) {
-    //     console.error("Error fetching students and teacher details:", error);
-    //     res.status(500).json({ message: "An error occurred while fetching student and teacher details" });
-    // }
+        // Step 2: Get Teacher details for each student
+        const { error: detailError, data: studentDetailsWithTeachers } = await service.getStudentDetailsWithTeacher(students);
+
+        if (detailError) {
+            return responseData(res, "Fail", detailError, 500);
+        }
+
+        // Return the combined data
+        return responseData(res, "Success", studentDetailsWithTeachers, 200);
     }
 
-    static async updateParentDetails(req, res) {
-        // Function to update parent details
-    }
-
-    static async createParentDetails(req, res) {
-        // Function to create parent details
-    }
-
+    // Fetch notifications for the parent based on their associated students' attendance
     static async getNotifications(req, res) {
-        // Function to get parent notifications
+        const parent_id = req.params.parent_id;
+
+        try {
+            // Step 1: Get student IDs for the parent
+            const { error: studentError, data: student_ids } = await service.getStudentIDsByParentID(parent_id);
+
+            // Step 2: Get attendance IDs for those students
+            const { error: attendanceError, data: attendance_ids } = await service.getAttendanceIDsByStudentIDs(student_ids);
+
+            if (attendanceError || attendance_ids.length === 0) {
+                return responseData(res, "Fail", attendanceError || "No attendance records found for these students", 404);
+            }
+
+            // Step 3: Get notifications linked to those attendance records
+            const { error: notificationError, data: notifications } = await service.getNotificationsByAttendanceIDs(attendance_ids);
+
+            if (notificationError || notifications.length === 0) {
+                return responseData(res, "Fail", notificationError || "No notifications found for this parent", 404);
+            }
+
+            // Return the notifications
+            return responseData(res, "Success", notifications, 200);
+
+        } catch (error) {
+            return responseData(res, "Error", "An error occurred while fetching notifications", 500);
+        }
     }
 
+// Get the current locations of all buses associated with the parent's students
     static async getBusTracking(req, res) {
-        // Function to get bus tracking info
+        const { parent_id } = req.params;
+
+        try {
+            // Call the service to get the drivers' locations
+            const { error, data } = await service.getDriverLocationsByParentId(parent_id);
+
+            if (error) {
+                return responseData(res, "Fail", error, 404);
+            }
+
+            return responseData(res, "Success", data, 200);
+        } catch (e) {
+            console.error("Error in getBusTracking:", e.message);
+            return responseData(res, "Error", "An unexpected error occurred", 500);
+        }
     }
 
     static async getParentProfile(req, res) {
-        // Function to get parent profile
+        try {
+            const { parent_id } = req.params;
+
+            const { error, data } = await service.getParentProfileById(parent_id);
+
+            if (error) {
+                return responseData(res, "Fail", error, 404);
+            }
+
+            return responseData(res, "Success", data, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
     }
 
+    // Update the profile of a parent
     static async updateParentProfile(req, res) {
-        // Function to update parent profile
-    }
+        try {
+            const { parent_id } = req.params;
+            const updatedParentData = req.body;
 
-    static async createParentProfile(req, res) {
-        // Function to create parent profile
-    }
+            const { error, data } = await service.updateParentProfileById(parent_id, updatedParentData);
 
-    static async deleteParentProfile(req, res) {
-        // Function to delete parent profile
+            if (error) {
+                return responseData(res, "Fail", error, 404);
+            }
+
+            return responseData(res, "Success", data, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
     }
 
     static async registerStudent(req, res) {
-        // Function to register student for bus
+        try {
+            const { parent_id } = req.params;
+            const studentData = req.body;
+
+            const { error, data } = await service.registerStudent(parent_id, studentData);
+
+            if (error) {
+                return responseData(res, "Fail", error, 404);
+            }
+
+            return responseData(res, "Success", data, 201);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
     }
 
-    static async logoutParent(req, res) {
-        // Function to handle parent logout
-    }
 }

@@ -4,13 +4,13 @@ const { Model, Sequelize } = _sequelize;
 export default class Role extends Model {
   static init(sequelize, DataTypes) {
   return super.init({
-    roleID: {
+    role_id: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
       allowNull: false,
       primaryKey: true
     },
-    roleName: {
+    role_name: {
       type: DataTypes.STRING(255),
       allowNull: false
     }
@@ -24,7 +24,7 @@ export default class Role extends Model {
         unique: true,
         using: "BTREE",
         fields: [
-          { name: "roleID" },
+          { name: "role_id" },
         ]
       },
     ]

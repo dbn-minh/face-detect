@@ -1,21 +1,51 @@
+import { responseData } from "../config/response.js";
+import * as service from "../services/authServices.js";
+
 export default class AuthController {
-    static async signup(req, res) {
-        // Function to handle user signup
-    }
+  static async signup(req, res) {
+    const { role_id, name, phone_number, email, password, other } = req.body;
+    const { error, data, status } = await service.signupService(
+      role_id,
+      name,
+      phone_number,
+      email,
+      password,
+      other
+    );
 
-    static async login(req, res) {
-        // Function to handle user login
+    if (error) {
+      return responseData(res, error, "", status);
     }
+    return responseData(res, "success", data, status);
+  }
 
-    static async logout(req, res) {
-        // Function to handle user logout
-    }
+  static async login(req, res) {
+    const { email, password } = req.body;
+    const { error, data, status } = await service.loginService(email, password);
 
-    static async refreshToken(req, res) {
-        // Function to handle token refresh
+    if (error) {
+      return responseData(res, error, "", status);
     }
+    return responseData(res, "Login successfully", data, status);
+  }
 
-    static async validateToken(req, res) {
-        // Function to validate token
+  static async logout(req, res) {
+    const { token } = req.headers;
+    const { error, message, status } = await service.logoutService(token);
+
+    if (error) {
+      return responseData(res, error, "", status);
     }
+    return responseData(res, message, "", status);
+  }
+
+  static async refreshToken(req, res) {
+    const { token } = req.headers;
+    const { error, data, status } = await service.refreshTokenService(token);
+
+    if (error) {
+      return responseData(res, error, "", status);
+    }
+    return responseData(res, "", data, status);
+  }
 }

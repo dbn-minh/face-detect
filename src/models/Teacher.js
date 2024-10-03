@@ -4,23 +4,23 @@ const { Model, Sequelize } = _sequelize;
 export default class Teacher extends Model {
   static init(sequelize, DataTypes) {
   return super.init({
-    teacherID: {
+    teacher_id: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
       allowNull: false,
       primaryKey: true
     },
-    department: {
-      type: DataTypes.STRING(255),
-      allowNull: false
-    },
-    userID: {
+    user_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'User',
-        key: 'userID'
+        key: 'user_id'
       }
+    },
+    department: {
+      type: DataTypes.STRING(255),
+      allowNull: false
     }
   }, {
     sequelize,
@@ -32,14 +32,14 @@ export default class Teacher extends Model {
         unique: true,
         using: "BTREE",
         fields: [
-          { name: "teacherID" },
+          { name: "teacher_id" },
         ]
       },
       {
-        name: "userID",
+        name: "user_id",
         using: "BTREE",
         fields: [
-          { name: "userID" },
+          { name: "user_id" },
         ]
       },
     ]

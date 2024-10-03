@@ -7,6 +7,6 @@ router.post('/signup', AuthController.signup);
 router.post('/login', AuthController.login);
 router.post('/logout', AuthController.logout);
 router.post('/refresh-token', AuthController.refreshToken);
-router.post('/validate-token', AuthController.validateToken);
+// change password
 
 export default router;
