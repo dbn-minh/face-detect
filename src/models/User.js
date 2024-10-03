@@ -4,17 +4,25 @@ const { Model, Sequelize } = _sequelize;
 export default class User extends Model {
   static init(sequelize, DataTypes) {
   return super.init({
-    userID: {
+    user_id: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
       allowNull: false,
       primaryKey: true
     },
+    role_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Role',
+        key: 'role_id'
+      }
+    },
     name: {
       type: DataTypes.STRING(255),
       allowNull: false
     },
-    phoneNumber: {
+    phone_number: {
       type: DataTypes.STRING(15),
       allowNull: false
     },
@@ -22,13 +30,13 @@ export default class User extends Model {
       type: DataTypes.STRING(255),
       allowNull: false
     },
-    roleID: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'Role',
-        key: 'roleID'
-      }
+    password: {
+      type: DataTypes.STRING(255),
+      allowNull: false
+    },
+    refresh_token: {
+      type: DataTypes.TEXT,
+      allowNull: true
     }
   }, {
     sequelize,
@@ -40,14 +48,14 @@ export default class User extends Model {
         unique: true,
         using: "BTREE",
         fields: [
-          { name: "userID" },
+          { name: "user_id" },
         ]
       },
       {
-        name: "roleID",
+        name: "role_id",
         using: "BTREE",
         fields: [
-          { name: "roleID" },
+          { name: "role_id" },
         ]
       },
     ]

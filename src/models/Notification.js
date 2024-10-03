@@ -4,26 +4,30 @@ const { Model, Sequelize } = _sequelize;
 export default class Notification extends Model {
   static init(sequelize, DataTypes) {
   return super.init({
-    notificationID: {
+    notification_id: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
       allowNull: false,
       primaryKey: true
     },
-    attendanceID: {
+    attendance_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'Attendance',
-        key: 'attendanceID'
+        key: 'attendance_id'
       }
     },
-    timeStamp: {
+    time_stamp: {
       type: DataTypes.DATE,
       allowNull: false
     },
     message: {
       type: DataTypes.STRING(255),
+      allowNull: false
+    },
+    status: {
+      type: DataTypes.ENUM('common','alert'),
       allowNull: false
     }
   }, {
@@ -36,14 +40,14 @@ export default class Notification extends Model {
         unique: true,
         using: "BTREE",
         fields: [
-          { name: "notificationID" },
+          { name: "notification_id" },
         ]
       },
       {
-        name: "attendanceID",
+        name: "attendance_id",
         using: "BTREE",
         fields: [
-          { name: "attendanceID" },
+          { name: "attendance_id" },
         ]
       },
     ]

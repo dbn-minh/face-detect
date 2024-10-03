@@ -1,263 +1,129 @@
-import initModels from "../models/init-models.js";
-import sequelize from "../config/database.js";
-let model = initModels(sequelize);
+
+import {responseData} from "../config/response.js";
+
+import * as service from '../services/parentServices.js';
+
 export default class ParentController {
+    // Fetch details of students associated with the parent
     static async getParentDetails(req, res) {
-        const parentID = req.params.parentID;
+        const parent_id = req.params.parent_id;
 
-        try {
-            // Step 1: Get Students for the parent
-            const students = await model.Student.findAll({
-                where: { parentID: parentID },
-                attributes: ['studentID', 'name', 'class', 'avatar']
-            });
+        // Step 1: Get Students for the parent
+        const { error: studentError, data: students } = await service.getStudentsOfParent(parent_id);
 
-            if (!students || students.length === 0) {
-                return res.status(404).json({ message: "No students found for this parent" });
-            }
-
-            // Step 2: Get Teacher details for each student
-            const studentDetailsWithTeachers = await Promise.all(students.map(async (student) => {
-                const teacher = await model.Teacher.findOne({
-                    where: { teacherID: student.teacherID },
-                    attributes: ['teacherID', 'department'],
-                    include: [{
-                        model: User,
-                        as: 'user',
-                        attributes: ['name', 'email', 'phoneNumber']
-                    }]
-                });
-
-                return {
-                    ...student.toJSON(),
-                    teacher: teacher ? teacher.toJSON() : null
-                };
-            }));
-
-            // Return the data
-            res.status(200).json(studentDetailsWithTeachers);
-
-        } catch (error) {
-            console.error("Error fetching students and teacher details:", error);
-            res.status(500).json({ message: "An error occurred while fetching student and teacher details" });
+        if (studentError) {
+            return responseData(res, "Fail", studentError, 404);
         }
+
+        // Step 2: Get Teacher details for each student
+        const { error: detailError, data: studentDetailsWithTeachers } = await service.getStudentDetailsWithTeacher(students);
+
+        if (detailError) {
+            return responseData(res, "Fail", detailError, 500);
+        }
+
+        // Return the combined data
+        return responseData(res, "Success", studentDetailsWithTeachers, 200);
     }
 
+    // Fetch notifications for the parent based on their associated students' attendance
     static async getNotifications(req, res) {
-        const parentID = req.params.id;
+        const parent_id = req.params.parent_id;
 
         try {
-            // Step 1: Find all students associated with the parentID
-            const students = await model.Student.findAll({
-                where: { parentID: parentID },
-                attributes: ['studentID']  // Only need the studentID for the next step
-            });
+            // Step 1: Get student IDs for the parent
+            const { error: studentError, data: student_ids } = await service.getStudentIDsByParentID(parent_id);
 
-            // Extract the student IDs
-            const studentIDs = students.map(student => student.studentID);
+            // Step 2: Get attendance IDs for those students
+            const { error: attendanceError, data: attendance_ids } = await service.getAttendanceIDsByStudentIDs(student_ids);
 
-            if (studentIDs.length === 0) {
-                return res.status(404).json({ message: "No students found for this parent" });
+            if (attendanceError || attendance_ids.length === 0) {
+                return responseData(res, "Fail", attendanceError || "No attendance records found for these students", 404);
             }
 
-            // Step 2: Find all attendance records for those students
-            const attendances = await model.Attendance.findAll({
-                where: { studentID: studentIDs },
-                attributes: ['attendanceID']  // Only need the attendanceID for the next step
-            });
+            // Step 3: Get notifications linked to those attendance records
+            const { error: notificationError, data: notifications } = await service.getNotificationsByAttendanceIDs(attendance_ids);
 
-            // Extract the attendance IDs
-            const attendanceIDs = attendances.map(attendance => attendance.attendanceID);
-
-            if (attendanceIDs.length === 0) {
-                return res.status(404).json({ message: "No attendance records found for these students" });
-            }
-
-            // Step 3: Find all notifications linked to those attendance records
-            const notifications = await Notification.findAll({
-                where: { attendanceID: attendanceIDs },
-                attributes: ['notificationID', 'timeStamp', 'message', 'image']
-            });
-
-            if (notifications.length === 0) {
-                return res.status(404).json({ message: "No notifications found for this parent" });
+            if (notificationError || notifications.length === 0) {
+                return responseData(res, "Fail", notificationError || "No notifications found for this parent", 404);
             }
 
             // Return the notifications
-            res.status(200).json(notifications);
+            return responseData(res, "Success", notifications, 200);
 
         } catch (error) {
-            console.error("Error fetching notifications:", error);
-            res.status(500).json({ message: "An error occurred while fetching notifications" });
+            return responseData(res, "Error", "An error occurred while fetching notifications", 500);
         }
     }
 
-    static async postNotification(req, res) {
-        const { attendanceID, message, image } = req.body;
+// Get the current locations of all buses associated with the parent's students
+    static async getBusTracking(req, res) {
+        const { parent_id } = req.params;
 
         try {
-            // Ensure the attendanceID exists
-            const attendance = await model.Attendance.findOne({
-                where: { attendanceID: attendanceID }
-            });
+            // Call the service to get the drivers' locations
+            const { error, data } = await service.getDriverLocationsByParentId(parent_id);
 
-            if (!attendance) {
-                return res.status(404).json({ message: "Attendance record not found" });
+            if (error) {
+                return responseData(res, "Fail", error, 404);
             }
 
-            // Create the notification
-            const newNotification = await Notification.create({
-                attendanceID: attendanceID,
-                timeStamp: new Date(),  // Use the current time for the timestamp
-                message: message,
-                image: image  // Assuming the image is already base64 encoded
-            });
-
-            // Return the newly created notification
-            res.status(201).json(newNotification);
-
-        } catch (error) {
-            console.error("Error creating notification:", error);
-            res.status(500).json({ message: "An error occurred while creating the notification" });
+            return responseData(res, "Success", data, 200);
+        } catch (e) {
+            console.error("Error in getBusTracking:", e.message);
+            return responseData(res, "Error", "An unexpected error occurred", 500);
         }
-    }
-
-    static async getBusTracking(req, res) {
-        // Function to get bus tracking info
     }
 
     static async getParentProfile(req, res) {
-        const parentID = req.params.parent_id;
-
         try {
-            // Step 1: Find the parent using the parentID
-            const parent = await model.Parent.findOne({
-                where: { parentID: parentID },
-                include: [{
-                    model: User,
-                    as: 'user',  // This matches the alias used in your model associations
-                    attributes: ['name', 'phoneNumber', 'email']  // Selecting specific attributes from the User model
-                }],
-                attributes: ['parentID', 'address']  // Selecting specific attributes from the Parent model
-            });
+            const { parent_id } = req.params;
 
-            if (!parent) {
-                return res.status(404).json({ message: "Parent not found" });
+            const { error, data } = await service.getParentProfileById(parent_id);
+
+            if (error) {
+                return responseData(res, "Fail", error, 404);
             }
 
-            // Return the parent's profile
-            res.status(200).json(parent);
-
-        } catch (error) {
-            console.error("Error fetching parent profile:", error);
-            res.status(500).json({ message: "An error occurred while fetching the parent profile" });
+            return responseData(res, "Success", data, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
         }
     }
 
+    // Update the profile of a parent
     static async updateParentProfile(req, res) {
-        const parentID = req.params.parent_id;
-        const { name, phoneNumber, email, address } = req.body;
-
         try {
-            // Step 1: Find the existing parent and associated user
-            const parent = await model.Parent.findOne({
-                where: { parentID: parentID },
-                include: [{
-                    model: User,
-                    as: 'user'
-                }]
-            });
+            const { parent_id } = req.params;
+            const updatedParentData = req.body;
 
-            if (!parent) {
-                return res.status(404).json({ message: "Parent not found" });
+            const { error, data } = await service.updateParentProfileById(parent_id, updatedParentData);
+
+            if (error) {
+                return responseData(res, "Fail", error, 404);
             }
 
-            // Step 2: Update the user and parent profile
-            await parent.user.update({
-                name: name,
-                phoneNumber: phoneNumber,
-                email: email
-            });
-
-            await parent.update({
-                address: address
-            });
-
-            // Return the updated profile
-            res.status(200).json({ message: "Parent profile updated successfully" });
-
-        } catch (error) {
-            console.error("Error updating parent profile:", error);
-            res.status(500).json({ message: "An error occurred while updating the parent profile" });
-        }
-    }
-
-    static async createParentProfile(req, res) {
-        const parentID = req.params.parent_id;
-        const { name, phoneNumber, email, address } = req.body;
-
-        try {
-            // Step 1: Check if the parent already exists
-            const existingParent = await model.Parent.findOne({
-                where: { parentID: parentID }
-            });
-
-            if (existingParent) {
-                return res.status(400).json({ message: "Parent profile already exists" });
-            }
-
-            // Step 2: Create a new user (if needed) and parent profile
-            const newUser = await model.User.create({
-                name,
-                phoneNumber,
-                email,
-                roleID: 1  // Assuming '1' is the roleID for 'Parent'
-            });
-
-            const newParent = await model.Parent.create({
-                parentID: parentID,
-                address: address,
-                userID: newUser.userID
-            });
-
-            // Return the created parent profile
-            res.status(201).json(newParent);
-
-        } catch (error) {
-            console.error("Error creating parent profile:", error);
-            res.status(500).json({ message: "An error occurred while creating the parent profile" });
+            return responseData(res, "Success", data, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
         }
     }
 
     static async registerStudent(req, res) {
-        const { parentID, name, class: studentClass, avatar, featureVector } = req.body;
-
         try {
-            // Step 1: Check if the parent exists
-            const parent = await model.Parent.findOne({
-                where: { parentID: parentID }
-            });
+            const { parent_id } = req.params;
+            const studentData = req.body;
 
-            if (!parent) {
-                return res.status(404).json({ message: "Parent not found" });
+            const { error, data } = await service.registerStudent(parent_id, studentData);
+
+            if (error) {
+                return responseData(res, "Fail", error, 404);
             }
 
-            // Step 2: Create a new student without specifying teacherID
-            const newStudent = await model.Student.create({
-                name: name,
-                class: studentClass,
-                parentID: parentID,
-                avatar: avatar,
-                featureVector: featureVector,
-                teacherID: null  // Make sure allow null
-            });
-
-            // Return the newly created student record
-            res.status(201).json(newStudent);
-
-        } catch (error) {
-            console.error("Error registering student:", error);
-            res.status(500).json({ message: "An error occurred while registering the student" });
+            return responseData(res, "Success", data, 201);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
         }
     }
+
 }

@@ -4,7 +4,7 @@ const { Model, Sequelize } = _sequelize;
 export default class Student extends Model {
   static init(sequelize, DataTypes) {
   return super.init({
-    studentID: {
+    student_id: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -14,31 +14,23 @@ export default class Student extends Model {
       type: DataTypes.STRING(255),
       allowNull: false
     },
-    teacherID: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'Teacher',
-        key: 'teacherID'
-      }
-    },
     class: {
       type: DataTypes.STRING(50),
       allowNull: false
     },
-    parentID: {
+    teacher_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
-        model: 'Parent',
-        key: 'parentID'
+        model: 'Teacher',
+        key: 'teacher_id'
       }
     },
     avatar: {
       type: DataTypes.TEXT,
       allowNull: true
     },
-    featureVector: {
+    feature_vector: {
       type: DataTypes.TEXT,
       allowNull: true
     }
@@ -52,21 +44,14 @@ export default class Student extends Model {
         unique: true,
         using: "BTREE",
         fields: [
-          { name: "studentID" },
+          { name: "student_id" },
         ]
       },
       {
-        name: "teacherID",
+        name: "teacher_id",
         using: "BTREE",
         fields: [
-          { name: "teacherID" },
-        ]
-      },
-      {
-        name: "parentID",
-        using: "BTREE",
-        fields: [
-          { name: "parentID" },
+          { name: "teacher_id" },
         ]
       },
     ]

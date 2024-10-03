@@ -1,34 +1,30 @@
 import _sequelize from 'sequelize';
 const { Model, Sequelize } = _sequelize;
 
-export default class Parent extends Model {
+export default class Student_Parent extends Model {
   static init(sequelize, DataTypes) {
   return super.init({
-    parent_id: {
-      autoIncrement: true,
+    student_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      primaryKey: true
-    },
-    user_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
+      primaryKey: true,
       references: {
-        model: 'User',
-        key: 'user_id'
+        model: 'Student',
+        key: 'student_id'
       }
     },
-    address: {
-      type: DataTypes.STRING(255),
-      allowNull: false
-    },
-    relationship: {
-      type: DataTypes.ENUM('Father','Mother','Other'),
-      allowNull: false
+    parent_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      primaryKey: true,
+      references: {
+        model: 'Parent',
+        key: 'parent_id'
+      }
     }
   }, {
     sequelize,
-    tableName: 'Parent',
+    tableName: 'Student_Parent',
     timestamps: false,
     indexes: [
       {
@@ -36,14 +32,15 @@ export default class Parent extends Model {
         unique: true,
         using: "BTREE",
         fields: [
+          { name: "student_id" },
           { name: "parent_id" },
         ]
       },
       {
-        name: "user_id",
+        name: "parent_id",
         using: "BTREE",
         fields: [
-          { name: "user_id" },
+          { name: "parent_id" },
         ]
       },
     ]
