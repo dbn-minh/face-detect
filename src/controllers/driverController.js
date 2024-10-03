@@ -4,6 +4,7 @@ import * as service from "../services/driverServices.js";
 export default class DriverController {
     // Fetch details students of driver in journey
     static async getDriverDetails(req, res) {
+
         try {
             const { driver_id } = req.params;
             const { error, data } = await service.getDriverDetailsById(driver_id);
@@ -16,7 +17,6 @@ export default class DriverController {
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
-
     }
 
     // Fetch the complete profile of a driver

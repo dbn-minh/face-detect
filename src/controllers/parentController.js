@@ -1,7 +1,7 @@
+
 import {responseData} from "../config/response.js";
 
 import * as service from '../services/parentServices.js';
-
 
 export default class ParentController {
     // Fetch details of students associated with the parent
