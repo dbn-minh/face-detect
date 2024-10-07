@@ -6,95 +6,84 @@ export default class ParentController {
       const parent_id = req.params.parent_id;
 
       try {
-        // Gọi service để lấy danh sách học sinh dựa trên parent_id
+        // Get student_ids by parent_id
         const students = await service.getAllStudentsInformationByParentId(parent_id);
 
-        // Nếu không tìm thấy học sinh
+        // If no students found
         if (!students || students.length === 0) {
           return responseData(res, 'Fail', 'No students found for this parent', 404);
         }
 
-        // Lấy thông tin current_location cho từng học sinh thông qua driver_id
-        const studentsWithDetails = await Promise.all(
-          students.map(async (student) => {
-            let updatedStudent = { ...student };
+          // Lấy thông tin current_location cho từng học sinh thông qua driver_id
+          const studentsWithDetails = await Promise.all(
+              students.map(async (student) => {
+                  let updatedStudent = { ...student };
+                  let currentLocation = null;
 
-            // Gọi service để lấy current_location từ driver_id
-            if (student.driver && student.driver.driver_id) {
-              const currentLocation = await service.getCurrentLocationByDriverId(student.driver.driver_id);
-              updatedStudent.driver = {
-                ...student.driver,
-                current_location: currentLocation || 'Unknown location',
-              };
-            }
+                  if (student.driver && student.driver.driver_id) {
+                      currentLocation = await service.getCurrentLocationByDriverId(student.driver.driver_id);
+                  }
 
-            // Gọi service để lấy notifications dựa trên student_id
-            const notifications = await service.getNotificationsByStudentId(student.student_id);
-            updatedStudent.notifications = notifications || [];
+                  const notifications = await service.getNotificationsByParentId(parent_id);
 
-            return updatedStudent;
-          })
-        );
+                  return {
+                      ...updatedStudent,
+                      current_location: currentLocation || 'Unknown location',
+                      notifications: notifications || [],
+                  };
+              })
+          );
 
-        // Trả về danh sách học sinh kèm thông tin tài xế, current_location và notifications
         return responseData(res, 'Success', studentsWithDetails, 200);
 
       } catch (error) {
-        // Trả về lỗi nếu có vấn đề xảy ra trong quá trình xử lý
         return responseData(res, 'Fail', error.message, 500);
       }
     }
 
     static async getStudentInformation(req, res) {
-      const parent_id = req.params.parent_id;
-
-      try {
-        // Gọi service để lấy danh sách học sinh dựa trên parent_id
+        const parent_id = req.params.parent_id;
+        try {
         const students = await service.getAllStudentsInformationByParentId(parent_id);
 
-        // Nếu không tìm thấy học sinh
         if (!students || students.length === 0) {
           return responseData(res, 'Fail', 'No students found for this parent', 404);
         }
 
-        // Trả về danh sách học sinh kèm thông tin tài xế, current_location và notifications
         return responseData(res, 'Success', students, 200);
 
       } catch (error) {
-        // Trả về lỗi nếu có vấn đề xảy ra trong quá trình xử lý
         return responseData(res, 'Fail', error.message, 500);
       }
     }
 
     static async getNotifications(req, res) {
-      const { parent_id } = req.params;
+        const parent_id = req.params.parent_id;
+        try {
+            const notifications = await service.getNotificationsByParentId(parent_id);
 
-      try {
-        // Gọi service để lấy danh sách student_id dựa trên parent_id
-        const studentIds = await service.getStudentIdsByParentId(parent_id);
+            if (!notifications || notifications.length === 0) {
+                return responseData(res, 'Fail', 'No notifications found for this parent', 404);
+            }
 
-        // Nếu không có student_id nào
-        if (!studentIds || studentIds.length === 0) {
-          return responseData(res, 'Fail', 'No students found for this parent', 404);
+            return responseData(res, 'Success', notifications, 200);
+
+        } catch (error) {
+            return responseData(res, 'Fail', error.message, 500);
         }
+    }
 
-        // Lấy tất cả notifications cho từng student_id
-        const notifications = await Promise.all(
-          studentIds.map(async (student_id) => {
-            const studentNotifications = await service.getNotificationsByStudentId(student_id);
-            return {
-              student_id: student_id,
-              notifications: studentNotifications || [],
-            };
-          })
-        );
+    static async getSettingOfParent(req, res) {
+        const parent_id = req.params.parent_id;
+        try {
+            const data = await service.getSetting(parent_id);
 
-        // Trả về danh sách thông báo theo từng học sinh
-        return responseData(res, 'Success', notifications, 200);
-
-      } catch (error) {
-        // Trả về lỗi nếu có vấn đề xảy ra trong quá trình xử lý
-        return responseData(res, 'Fail', error.message, 500);
-      }
+            if (!data || data.length === 0) {
+                return responseData(res, 'Fail', 'No notifications found for this parent', 404);
+            }
+            return responseData(res, 'Success', data, 200);
+        } catch (error) {
+            return responseData(res, 'Fail', error.message, 500);
+        }
     }
 }
