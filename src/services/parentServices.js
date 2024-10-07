@@ -4,70 +4,176 @@ let model = initModels(sequelize);
 import bcrypt from 'bcrypt';
 import { Op } from 'sequelize';
 
-// Function to get students by parent ID
-export const getStudentsOfParent = async (parent_id) => {
-    try {
-        // Get Students for the parent
-        const students = await model.Student.findAll({
-            where: { parent_id: parent_id },
-            attributes: ['student_id', 'name', 'class', 'avatar', 'teacher_id']
+export const getAllStudentsInformationByParentId = async (parent_id) => {
+  try {
+    // Lấy danh sách student_id từ Student_Parent thông qua parent_id
+    const studentParentRecords = await model.Student_Parent.findAll({
+      where: { parent_id: parent_id },
+      attributes: ['student_id'],
+    });
+
+    // Lấy danh sách student_id từ studentParentRecords
+    const studentIds = studentParentRecords.map(record => record.student_id);
+
+    if (studentIds.length === 0) {
+      return []; // Trả về mảng rỗng nếu không có học sinh nào
+    }
+
+    // Lấy thông tin chi tiết của từng student dựa vào student_id
+    const students = await model.Student.findAll({
+      where: {
+        student_id: studentIds, // Lọc các student dựa vào danh sách student_id
+      },
+      attributes: ['student_id', 'name', 'class', 'teacher_id' , "driver_id", 'avatar'],
+    });
+
+    // Lấy thông tin giáo viên từ teacher_id trong Student
+    return await Promise.all(
+      students.map(async (student) => {
+        const teacher = await model.Teacher.findOne({
+          where: { teacher_id: student.teacher_id },
+          attributes: ['teacher_id', 'user_id'], // Chỉ lấy teacher_id và user_id
         });
 
-        if (!students || students.length === 0) {
-            return { error: "No students found for this parent", data: null };
-        }
-
-        return { error: null, data: students };
-
-    } catch (error) {
-        console.error("Error fetching students:", error);
-        return { error: "An error occurred while fetching students", data: null };
-    }
-};
-
-// Function to get detailed student information, including the teacher
-export const getStudentDetailsWithTeacher = async (students) => {
-    try {
-        // Get Teacher details for each student
-        const studentDetailsWithTeachers = await Promise.all(students.map(async (student) => {
-            const teacher = await model.Teacher.findOne({
-                where: { teacher_id: student.teacher_id },
-                attributes: ['teacher_id', 'department'],
-                include: [{
-                    model: model.User,
-                    as: 'user',
-                    attributes: ['name', 'email', 'phone_number']
-                }]
-            });
-
-            return {
-                ...student.toJSON(),
-                teacher: teacher ? teacher.toJSON() : null
-            };
-        }));
-
-        return { error: null, data: studentDetailsWithTeachers };
-
-    } catch (error) {
-        console.error("Error fetching student details with teacher:", error);
-        return { error: "An error occurred while fetching student details with teacher", data: null };
-    }
-};
-
-// Service to get student IDs associated with a parent
-export const getStudentIDsByParentID = async (parent_id) => {
-    try {
-        const students = await model.Student.findAll({
-            where: { parent_id: parent_id },
-            attributes: ['student_id']
+        // Lấy thông tin người dùng từ user_id của giáo viên
+        const teacherUser = teacher
+          ? await model.User.findOne({
+              where: { user_id: teacher.user_id },
+              attributes: ['user_id', 'name', 'phone_number', 'email'], //
+            })
+          : null;
+        // Lấy thông tin tài xế (driver & user)
+        const driver = await model.Driver.findOne({
+          where: { driver_id: student.driver_id },
+          attributes: ['driver_id', 'user_id'], // Chỉ lấy driver_id và user_id
         });
 
-        const student_ids = students.map(student => student.student_id);
-        return { error: null, data: student_ids };
-    } catch (error) {
-        console.error("Error fetching student IDs:", error);
-        return { error: "An error occurred while fetching student IDs", data: null };
+        const driverUser = driver
+          ? await model.User.findOne({
+              where: { user_id: driver.user_id },
+              attributes: ['user_id', 'name', 'phone_number', 'email'], // Lấy thông tin cần thiết từ User
+            })
+          : null;
+
+        // Chỉnh nội dung Response
+        return {
+          student_id: student.student_id,
+          name: student.name,
+          class: student.class,
+          avatar: student.avatar,
+          teacher: teacher
+            ? {
+                teacher_id: teacher.teacher_id,
+                "Teacher information": teacherUser
+                  ? {
+                      user_id: teacherUser.user_id,
+                      name: teacherUser.name,
+                      phone_number: teacherUser.phone_number,
+                      email: teacherUser.email,
+                    }
+                  : null,
+              }
+            : null,
+          driver: driver
+            ? {
+                driver_id: driver.driver_id,
+                "Driver information": driverUser
+                  ? {
+                      user_id: driverUser.user_id,
+                      name: driverUser.name,
+                      phone_number: driverUser.phone_number,
+                      email: driverUser.email,
+                    }
+                  : null,
+              }
+            : null,
+        };
+      })
+    );
+  } catch (error) {
+    throw new Error('Error fetching students for parent: ' + error.message);
+  }
+};
+
+// services/notificationService.js
+export const getNotificationsByStudentId = async (student_id) => {
+  try {
+    // Tìm attendance_id trong bảng Attendance dựa trên student_id
+    const attendanceRecords = await model.Attendance.findAll({
+      where: { student_id: student_id },
+      attributes: ['attendance_id'], // Chỉ lấy attendance_id
+    });
+
+    const attendanceIds = attendanceRecords.map(record => record.attendance_id);
+
+    if (attendanceIds.length === 0) {
+      return []; // Nếu không có attendance_id nào
     }
+
+    // Tìm tất cả notifications dựa trên attendance_id
+    return await model.Notification.findAll({
+      where: {
+        attendance_id: attendanceIds, // Lọc các notification dựa trên attendance_id
+      },
+      attributes: ['notification_id', 'attendance_id', 'time_stamp', 'message', 'image', 'status'], // Các thuộc tính trong Notification
+    });
+
+  } catch (error) {
+    throw new Error('Error fetching notifications: ' + error.message);
+  }
+};
+
+export const getStudentIdsByParentId = async (parent_id) => {
+  try {
+    const studentParentRecords = await model.Student_Parent.findAll({
+      where: { parent_id: parent_id },
+      attributes: ['student_id'], // Chỉ lấy student_id
+    });
+
+    return studentParentRecords.map(record => record.student_id);
+
+  } catch (error) {
+    throw new Error('Error fetching student IDs: ' + error.message);
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+export const getCurrentLocationByDriverId = async (driver_id) => {
+  try {
+    const bus = await model.Bus.findOne({
+      where: { driver_id: driver_id },
+      attributes: ['current_location'], // Chỉ lấy current_location từ Bus
+    });
+
+    if (!bus) {
+      return null; // Nếu không có bus nào được tìm thấy
+    }
+
+    return bus.current_location; // Trả về current_location
+  } catch (error) {
+    throw new Error('Error fetching current location: ' + error.message);
+  }
 };
 
 // Service to get attendance IDs associated with student IDs

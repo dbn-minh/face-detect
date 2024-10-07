@@ -26,6 +26,10 @@ export default class Notification extends Model {
       type: DataTypes.STRING(255),
       allowNull: false
     },
+    image: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
     status: {
       type: DataTypes.ENUM('common','alert'),
       allowNull: false
