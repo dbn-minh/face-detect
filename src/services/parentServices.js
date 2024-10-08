@@ -135,7 +135,7 @@ export const getNotificationsByParentId = async (parent_id) => {
 
 export const getSetting = async (parent_id) => {
     try {
-        const studentInfo = await model.Student_Parent.findAll({
+        return await model.Student_Parent.findAll({
             where: { parent_id: parent_id },
             attributes: ['student_id'],
             include: [
@@ -152,30 +152,13 @@ export const getSetting = async (parent_id) => {
                                 {
                                     model: model.Bus,
                                     as: 'Buses',
-                                    attributes: ['license_plate']
+                                    attributes: ['bus_id', 'license_plate'],
                                 }
                             ]
                         }
                     ]
                 }
             ]
-        });
-
-        // Trả về thông tin học sinh kèm theo giáo viên và tài xế
-        return studentInfo.map((record) => {
-            const bus = record.student.driver && record.student.driver.Buses;
-            return {
-                student_id: record.student.student_id,
-                name: record.student.name,
-                class: record.student.class,
-                avatar: record.student.avatar,
-                driver: record.student.driver
-                    ? {
-                        driver_id: record.student.driver.driver_id,
-                        "Bus Plate": bus ? bus.license_plate : 'No plate available'
-                    }
-                    : null,
-            };
         });
     } catch (error) {
         throw new Error('Error fetching students for parent: ' + error.message);
