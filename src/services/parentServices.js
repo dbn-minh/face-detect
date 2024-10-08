@@ -105,11 +105,12 @@ export const getNotificationsByParentId = async (parent_id) => {
         // Tìm student_id từ bảng Student_Parent, lấy kèm Attendance và Notification
         return await model.Student_Parent.findAll({
             where: { parent_id: parent_id },
+            attributes: [],
             include: [
                 {
                     model: model.Student,
                     as: 'student',
-                    attributes: ['student_id', 'name'],
+                    attributes: ['name'],
                     include: [
                         {
                             model: model.Attendance,
@@ -142,7 +143,7 @@ export const getSetting = async (parent_id) => {
                 {
                     model: model.Student,
                     as: 'student',
-                    attributes: ['student_id', 'name', 'class', 'driver_id', 'avatar', 'feature_vector'],
+                    attributes: ['name', 'class', 'avatar', 'feature_vector'],
                     include: [
                         {
                             model: model.Driver,
@@ -157,6 +158,18 @@ export const getSetting = async (parent_id) => {
                             ]
                         }
                     ]
+                },
+                {
+                    model: model.Parent, // Liên kết đến bảng Parent
+                    as: 'parent', // Đảm bảo alias trùng với alias trong initModels
+                    attributes: ['address'], // Lấy địa chỉ từ bảng Parent
+                    include: [
+                        {
+                            model: model.User, // Liên kết với bảng User để lấy số điện thoại
+                            as: 'user',
+                            attributes: ['phone_number'], // Lấy số điện thoại từ bảng User
+                        }
+                    ]
                 }
             ]
         });
@@ -164,6 +177,54 @@ export const getSetting = async (parent_id) => {
         throw new Error('Error fetching students for parent: ' + error.message);
     }
 };
+
+export const updateSetting = async (parent_id, updateData) => {
+    const { name, className, address, phone_number } = updateData;
+
+    try {
+        // Fetch the student_id based on the parent_id
+        const studentParentRecord = await model.Student_Parent.findOne({
+            where: { parent_id: parent_id },
+            attributes: ['student_id'], // Only fetch the student_id
+        });
+
+        if (!studentParentRecord) {
+            throw new Error('No student found for the given parent.');
+        }
+
+        const student_id = studentParentRecord.student_id;
+
+        // Update student's information
+        await model.Student.update(
+            { name: name, class: className }, // Data to be updated
+            { where: { student_id: student_id } } // Condition to find the student
+        );
+
+        // Update parent's address
+        await model.Parent.update(
+            { address: address }, // Data to be updated
+            { where: { parent_id: parent_id } } // Condition to find the parent
+        );
+
+        // Update parent's phone number in the User table
+        const parent = await model.Parent.findOne({
+            where: { parent_id: parent_id },
+            include: [{ model: model.User, as: 'user' }] // Include User to access the user table
+        });
+
+        if (parent && parent.user) {
+            await model.User.update(
+                { phone_number: phone_number }, // Data to be updated
+                { where: { user_id: parent.user.user_id } } // Condition to find the user
+            );
+        }
+
+        return { message: 'Update successful' };
+    } catch (error) {
+        throw new Error('Error updating settings: ' + error.message);
+    }
+};
+
 
 
 
