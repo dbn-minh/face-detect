@@ -1,129 +1,89 @@
-
 import {responseData} from "../config/response.js";
-
 import * as service from '../services/parentServices.js';
 
 export default class ParentController {
-    // Fetch details of students associated with the parent
-    static async getParentDetails(req, res) {
-        const parent_id = req.params.parent_id;
+    static async getParentHome(req, res) {
+      const parent_id = req.params.parent_id;
 
-        // Step 1: Get Students for the parent
-        const { error: studentError, data: students } = await service.getStudentsOfParent(parent_id);
+      try {
+        // Get student_ids by parent_id
+        const students = await service.getAllStudentsInformationByParentId(parent_id);
 
-        if (studentError) {
-            return responseData(res, "Fail", studentError, 404);
+        // If no students found
+        if (!students || students.length === 0) {
+          return responseData(res, 'Fail', 'No students found for this parent', 404);
         }
 
-        // Step 2: Get Teacher details for each student
-        const { error: detailError, data: studentDetailsWithTeachers } = await service.getStudentDetailsWithTeacher(students);
+          // Lấy thông tin current_location cho từng học sinh thông qua driver_id
+          const studentsWithDetails = await Promise.all(
+              students.map(async (student) => {
+                  let updatedStudent = { ...student };
+                  let currentLocation = null;
 
-        if (detailError) {
-            return responseData(res, "Fail", detailError, 500);
-        }
+                  if (student.driver && student.driver.driver_id) {
+                      currentLocation = await service.getCurrentLocationByDriverId(student.driver.driver_id);
+                  }
 
-        // Return the combined data
-        return responseData(res, "Success", studentDetailsWithTeachers, 200);
+                  const notifications = await service.getNotificationsByParentId(parent_id);
+
+                  return {
+                      ...updatedStudent,
+                      current_location: currentLocation || 'Unknown location',
+                      notifications: notifications || [],
+                  };
+              })
+          );
+
+        return responseData(res, 'Success', studentsWithDetails, 200);
+
+      } catch (error) {
+        return responseData(res, 'Fail', error.message, 500);
+      }
     }
 
-    // Fetch notifications for the parent based on their associated students' attendance
+    static async getStudentInformation(req, res) {
+        const parent_id = req.params.parent_id;
+        try {
+        const students = await service.getAllStudentsInformationByParentId(parent_id);
+
+        if (!students || students.length === 0) {
+          return responseData(res, 'Fail', 'No students found for this parent', 404);
+        }
+
+        return responseData(res, 'Success', students, 200);
+
+      } catch (error) {
+        return responseData(res, 'Fail', error.message, 500);
+      }
+    }
+
     static async getNotifications(req, res) {
         const parent_id = req.params.parent_id;
-
         try {
-            // Step 1: Get student IDs for the parent
-            const { error: studentError, data: student_ids } = await service.getStudentIDsByParentID(parent_id);
+            const notifications = await service.getNotificationsByParentId(parent_id);
 
-            // Step 2: Get attendance IDs for those students
-            const { error: attendanceError, data: attendance_ids } = await service.getAttendanceIDsByStudentIDs(student_ids);
-
-            if (attendanceError || attendance_ids.length === 0) {
-                return responseData(res, "Fail", attendanceError || "No attendance records found for these students", 404);
+            if (!notifications || notifications.length === 0) {
+                return responseData(res, 'Fail', 'No notifications found for this parent', 404);
             }
 
-            // Step 3: Get notifications linked to those attendance records
-            const { error: notificationError, data: notifications } = await service.getNotificationsByAttendanceIDs(attendance_ids);
-
-            if (notificationError || notifications.length === 0) {
-                return responseData(res, "Fail", notificationError || "No notifications found for this parent", 404);
-            }
-
-            // Return the notifications
-            return responseData(res, "Success", notifications, 200);
+            return responseData(res, 'Success', notifications, 200);
 
         } catch (error) {
-            return responseData(res, "Error", "An error occurred while fetching notifications", 500);
+            return responseData(res, 'Fail', error.message, 500);
         }
     }
 
-// Get the current locations of all buses associated with the parent's students
-    static async getBusTracking(req, res) {
-        const { parent_id } = req.params;
-
+    static async getSettingOfParent(req, res) {
+        const parent_id = req.params.parent_id;
         try {
-            // Call the service to get the drivers' locations
-            const { error, data } = await service.getDriverLocationsByParentId(parent_id);
+            const data = await service.getSetting(parent_id);
 
-            if (error) {
-                return responseData(res, "Fail", error, 404);
+            if (!data || data.length === 0) {
+                return responseData(res, 'Fail', 'No notifications found for this parent', 404);
             }
-
-            return responseData(res, "Success", data, 200);
-        } catch (e) {
-            console.error("Error in getBusTracking:", e.message);
-            return responseData(res, "Error", "An unexpected error occurred", 500);
+            return responseData(res, 'Success', data, 200);
+        } catch (error) {
+            return responseData(res, 'Fail', error.message, 500);
         }
     }
-
-    static async getParentProfile(req, res) {
-        try {
-            const { parent_id } = req.params;
-
-            const { error, data } = await service.getParentProfileById(parent_id);
-
-            if (error) {
-                return responseData(res, "Fail", error, 404);
-            }
-
-            return responseData(res, "Success", data, 200);
-        } catch (e) {
-            return responseData(res, "Error", e.message, 500);
-        }
-    }
-
-    // Update the profile of a parent
-    static async updateParentProfile(req, res) {
-        try {
-            const { parent_id } = req.params;
-            const updatedParentData = req.body;
-
-            const { error, data } = await service.updateParentProfileById(parent_id, updatedParentData);
-
-            if (error) {
-                return responseData(res, "Fail", error, 404);
-            }
-
-            return responseData(res, "Success", data, 200);
-        } catch (e) {
-            return responseData(res, "Error", e.message, 500);
-        }
-    }
-
-    static async registerStudent(req, res) {
-        try {
-            const { parent_id } = req.params;
-            const studentData = req.body;
-
-            const { error, data } = await service.registerStudent(parent_id, studentData);
-
-            if (error) {
-                return responseData(res, "Fail", error, 404);
-            }
-
-            return responseData(res, "Success", data, 201);
-        } catch (e) {
-            return responseData(res, "Error", e.message, 500);
-        }
-    }
-
 }

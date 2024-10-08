@@ -33,6 +33,8 @@ export default function initModels(sequelize) {
   Bus.hasMany(Journey, { as: "Journeys", foreignKey: "bus_id"});
   Bus.belongsTo(Driver, { as: "driver", foreignKey: "driver_id"});
   Driver.hasMany(Bus, { as: "Buses", foreignKey: "driver_id"});
+  Student.belongsTo(Driver, { as: "driver", foreignKey: "driver_id"});
+  Driver.hasMany(Student, { as: "Students", foreignKey: "driver_id"});
   Attendance.belongsTo(Journey, { as: "journey", foreignKey: "journey_id"});
   Journey.hasMany(Attendance, { as: "Attendances", foreignKey: "journey_id"});
   Student_Parent.belongsTo(Parent, { as: "parent", foreignKey: "parent_id"});

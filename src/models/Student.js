@@ -26,6 +26,14 @@ export default class Student extends Model {
         key: 'teacher_id'
       }
     },
+    driver_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Driver',
+        key: 'driver_id'
+      }
+    },
     avatar: {
       type: DataTypes.TEXT,
       allowNull: true
@@ -52,6 +60,13 @@ export default class Student extends Model {
         using: "BTREE",
         fields: [
           { name: "teacher_id" },
+        ]
+      },
+      {
+        name: "driver_id",
+        using: "BTREE",
+        fields: [
+          { name: "driver_id" },
         ]
       },
     ]

@@ -34,14 +34,6 @@ export default class Attendance extends Model {
       type: DataTypes.DATE,
       allowNull: true
     },
-    boarded_image: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    alighted_image: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
     status: {
       type: DataTypes.ENUM('boarded','alighted','not alighted','completed'),
       allowNull: true,
