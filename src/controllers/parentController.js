@@ -124,6 +124,19 @@ export default class ParentController {
             // Handle any errors that occur
             return res.status(500).json({ message: 'Error', error: error.message });
         }
-    };
+    }
+    static async writeFeedback(req, res){
+        const { parent_id } = req.params;
+        const { title, content } = req.body;
+
+        try {
+            // Call the combined service to handle both getting user_id and writing feedback
+            const feedback = await service.writeFeedback(parent_id, title, content);
+
+            return responseData(res, 'Success', feedback, 201);
+        } catch (error) {
+            return responseData(res, 'Fail', error.message, 500);
+        }
+    }
 }
 

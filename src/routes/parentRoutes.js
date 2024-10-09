@@ -9,14 +9,10 @@ router.get('/student/:parent_id', ParentController.getStudentInformation);
 router.get('/notification/:parent_id', ParentController.getNotifications);
 router.get('/setting/:parent_id', ParentController.getParentSetting);
 router.put('/setting/:parent_id', ParentController.updateParentSetting);
+router.post('/feedback/:parent_id', ParentController.writeFeedback);
+
+// pending
 router.put('/avatar/:parent_id', upload.single('avatar'), ParentController.uploadStudentAvatar);
-
 // router.put('change-pass/:parent_id', AuthController.updatePassword);
-
-
-// router.get('/profile/:parent_id', ParentController.getParentProfile);
-// router.put('/profile/:parent_id', ParentController.updateParentProfile);
-// router.post('/register/:parent_id', ParentController.registerStudent);
-// router.get('/tracking/:parent_id', ParentController.getBusTracking);
 
 export default router;

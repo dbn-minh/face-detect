@@ -3,6 +3,7 @@ const DataTypes = _sequelize.DataTypes;
 import _Attendance from  "./Attendance.js";
 import _Bus from  "./Bus.js";
 import _Driver from  "./Driver.js";
+import _Feedback from  "./Feedback.js";
 import _Journey from  "./Journey.js";
 import _Notification from  "./Notification.js";
 import _Parent from  "./Parent.js";
@@ -16,6 +17,7 @@ export default function initModels(sequelize) {
   const Attendance = _Attendance.init(sequelize, DataTypes);
   const Bus = _Bus.init(sequelize, DataTypes);
   const Driver = _Driver.init(sequelize, DataTypes);
+  const Feedback = _Feedback.init(sequelize, DataTypes);
   const Journey = _Journey.init(sequelize, DataTypes);
   const Notification = _Notification.init(sequelize, DataTypes);
   const Parent = _Parent.init(sequelize, DataTypes);
@@ -51,6 +53,8 @@ export default function initModels(sequelize) {
   Teacher.hasMany(Student, { as: "Students", foreignKey: "teacher_id"});
   Driver.belongsTo(User, { as: "user", foreignKey: "user_id"});
   User.hasMany(Driver, { as: "Drivers", foreignKey: "user_id"});
+  Feedback.belongsTo(User, { as: "user", foreignKey: "user_id"});
+  User.hasMany(Feedback, { as: "Feedbacks", foreignKey: "user_id"});
   Parent.belongsTo(User, { as: "user", foreignKey: "user_id"});
   User.hasMany(Parent, { as: "Parents", foreignKey: "user_id"});
   Teacher.belongsTo(User, { as: "user", foreignKey: "user_id"});
@@ -60,6 +64,7 @@ export default function initModels(sequelize) {
     Attendance,
     Bus,
     Driver,
+    Feedback,
     Journey,
     Notification,
     Parent,

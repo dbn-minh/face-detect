@@ -4,109 +4,54 @@ import bcrypt from 'bcrypt';
 
 let model = initModels(sequelize);
 
-// Service to get driver details by ID
-export const getDriverDetailsById = async (driver_id) => {
+export const getDriverDetails = async (driver_id) => {
     try {
-        // Get all journeys associated with the driver
-        const journeys = await model.Journey.findAll({
+        // Step 1: Get the Bus and Teacher info based on driver_id
+        const bus = await model.Bus.findOne({
             where: { driver_id },
-            attributes: ['journey_id'],
+            attributes: ['bus_id', 'license_plate'],
+            include: [
+                {
+                    model: model.Teacher,
+                    as: 'teacher', // Include teacher information
+                    attributes: ['teacher_id'],
+                    include: [
+                        {
+                            model: model.User, // Get teacher's user info
+                            as: 'user',
+                            attributes: ['name', 'email', 'phone_number']
+                        }
+                    ]
+                }
+            ]
         });
 
-        if (!journeys.length) {
-            return { error: "No journeys found for this driver", data: null };
+        if (!bus) {
+            throw new Error('No bus found for this driver');
         }
 
-        // Extract all journey IDs
-        const journeyIds = journeys.map(journey => journey.journey_id);
-
-        // Get all students associated with these journeys
+        // Step 2: Get all students related to this driver_id
         const students = await model.Student.findAll({
-            include: [{
-                model: model.Attendance,
-                as: 'Attendances',
-                where: { journey_id: journeyIds },
-                attributes: []
-            }]
+            where: { driver_id },
+            attributes: ['student_id', 'name', 'class', 'avatar']
         });
-        if (!students.length) {
-            return { error: "No students found for this driver's journeys", data: null };
-        }
 
         return {
-            error: null,
-            data: students.map(student => student.toJSON())
+            bus: {
+                bus_id: bus.bus_id,
+                license_plate: bus.license_plate,
+                teacher: bus.teacher
+                    ? {
+                          teacher_id: bus.teacher.teacher_id,
+                          name: bus.teacher.user.name,
+                          email: bus.teacher.user.email,
+                          phone_number: bus.teacher.user.phone_number
+                      }
+                    : null
+            },
+            students: students.length > 0 ? students : []
         };
     } catch (error) {
-        console.error("Error fetching driver details:", error);
-        return { error: "An error occurred while fetching driver details", data: null };
-    }
-};
-
-// Service to get driver profile by ID
-export const getDriverProfileById = async (driver_id) => {
-    try {
-        const driverProfile = await model.Driver.findOne({
-            where: { driver_id },
-            include: [{
-                model: model.User,
-                as: 'user',
-                attributes: ['name', 'email', 'phone_number']
-            }]
-        });
-
-        if (!driverProfile) {
-            return { error: "Driver not found", data: null };
-        }
-
-        return { error: null, data: driverProfile.toJSON() };
-    } catch (error) {
-        console.error("Error fetching driver profile:", error);
-        return { error: "An error occurred while fetching the driver profile", data: null };
-    }
-};
-
-// Service to update driver profile by ID
-export const updateDriverProfileById = async (driver_id, updatedDriverData) => {
-    try {
-        const { name, email, phone_number, password, license_number } = updatedDriverData;
-
-        // Find the driver profile by ID
-        const driverProfile = await model.Driver.findOne({
-            where: { driver_id },
-            include: [{
-                model: model.User,
-                as: 'user',
-            }]
-        });
-
-        if (!driverProfile) {
-            return { error: "Driver not found", data: null };
-        }
-
-        // Hash the new password if it's provided
-        let hashedPassword;
-        if (password) {
-            hashedPassword = await bcrypt.hash(password, 10);
-        }
-
-        // Update the User table with the provided user-related attributes, including the password
-        const updatedUser = await driverProfile.user.update({
-            name: name || driverProfile.user.name,
-            email: email || driverProfile.user.email,
-            phone_number: phone_number || driverProfile.user.phone_number,
-            password: hashedPassword || driverProfile.user.password,
-        });
-
-        // Update the Driver table with the provided driver-related attributes
-        await driverProfile.update({
-            license_number: license_number || driverProfile.license_number,
-        });
-
-        // Return the updated profile
-        return { error: null, data: { ...driverProfile.toJSON(), user: updatedUser.toJSON() } };
-    } catch (error) {
-        console.error("Error updating driver profile:", error);
-        return { error: "An error occurred while updating the driver profile", data: null };
+        throw new Error('Error fetching driver details: ' + error.message);
     }
 };

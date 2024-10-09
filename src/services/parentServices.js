@@ -224,6 +224,27 @@ export const updateSetting = async (parent_id, updateData) => {
         throw new Error('Error updating settings: ' + error.message);
     }
 };
+export const writeFeedback = async (parent_id, title, content) => {
+    try {
+        // Get the user_id from Parent table using parent_id
+        const parent = await model.Parent.findOne({
+            where: { parent_id },
+            attributes: ['user_id'],  // Only fetch user_id
+        });
+
+        const user_id = parent.user_id;
+
+        // Write feedback to the Feedback table
+        return await model.Feedback.create({
+            user_id,
+            title,
+            content,
+        });
+
+    } catch (error) {
+        throw new Error('Error writing feedback: ' + error.message);
+    }
+};
 
 
 
