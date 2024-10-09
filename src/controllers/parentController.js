@@ -19,17 +19,10 @@ export default class ParentController {
           const studentsWithDetails = await Promise.all(
               students.map(async (student) => {
                   let updatedStudent = { ...student };
-                  let currentLocation = null;
-
-                  if (student.driver && student.driver.driver_id) {
-                      currentLocation = await service.getCurrentLocationByDriverId(student.driver.driver_id);
-                  }
 
                   const notifications = await service.getNotificationsByParentId(parent_id);
-
                   return {
                       ...updatedStudent,
-                      current_location: currentLocation || 'Unknown location',
                       notifications: notifications || [],
                   };
               })

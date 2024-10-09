@@ -33,10 +33,10 @@ export default function initModels(sequelize) {
   Attendance.hasMany(Notification, { as: "Notifications", foreignKey: "attendance_id"});
   Journey.belongsTo(Bus, { as: "bus", foreignKey: "bus_id"});
   Bus.hasMany(Journey, { as: "Journeys", foreignKey: "bus_id"});
+  Student.belongsTo(Bus, { as: "bus", foreignKey: "bus_id"});
+  Bus.hasMany(Student, { as: "Students", foreignKey: "bus_id"});
   Bus.belongsTo(Driver, { as: "driver", foreignKey: "driver_id"});
   Driver.hasMany(Bus, { as: "Buses", foreignKey: "driver_id"});
-  Student.belongsTo(Driver, { as: "driver", foreignKey: "driver_id"});
-  Driver.hasMany(Student, { as: "Students", foreignKey: "driver_id"});
   Attendance.belongsTo(Journey, { as: "journey", foreignKey: "journey_id"});
   Journey.hasMany(Attendance, { as: "Attendances", foreignKey: "journey_id"});
   Student_Parent.belongsTo(Parent, { as: "parent", foreignKey: "parent_id"});
@@ -49,8 +49,6 @@ export default function initModels(sequelize) {
   Student.hasMany(Student_Parent, { as: "Student_Parents", foreignKey: "student_id"});
   Bus.belongsTo(Teacher, { as: "teacher", foreignKey: "teacher_id"});
   Teacher.hasMany(Bus, { as: "Buses", foreignKey: "teacher_id"});
-  Student.belongsTo(Teacher, { as: "teacher", foreignKey: "teacher_id"});
-  Teacher.hasMany(Student, { as: "Students", foreignKey: "teacher_id"});
   Driver.belongsTo(User, { as: "user", foreignKey: "user_id"});
   User.hasMany(Driver, { as: "Drivers", foreignKey: "user_id"});
   Feedback.belongsTo(User, { as: "user", foreignKey: "user_id"});
