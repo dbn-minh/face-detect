@@ -16,7 +16,8 @@ export default class Bus extends Model {
       references: {
         model: 'Driver',
         key: 'driver_id'
-      }
+      },
+      unique: "Bus_ibfk_1"
     },
     teacher_id: {
       type: DataTypes.INTEGER,
@@ -24,7 +25,8 @@ export default class Bus extends Model {
       references: {
         model: 'Teacher',
         key: 'teacher_id'
-      }
+      },
+      unique: "Bus_ibfk_2"
     },
     capacity: {
       type: DataTypes.INTEGER,
@@ -57,6 +59,7 @@ export default class Bus extends Model {
       },
       {
         name: "driver_id",
+        unique: true,
         using: "BTREE",
         fields: [
           { name: "driver_id" },
@@ -64,6 +67,7 @@ export default class Bus extends Model {
       },
       {
         name: "teacher_id",
+        unique: true,
         using: "BTREE",
         fields: [
           { name: "teacher_id" },

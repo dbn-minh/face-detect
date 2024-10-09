@@ -16,7 +16,8 @@ export default class Teacher extends Model {
       references: {
         model: 'User',
         key: 'user_id'
-      }
+      },
+      unique: "Teacher_ibfk_1"
     },
     department: {
       type: DataTypes.STRING(255),
@@ -37,6 +38,7 @@ export default class Teacher extends Model {
       },
       {
         name: "user_id",
+        unique: true,
         using: "BTREE",
         fields: [
           { name: "user_id" },

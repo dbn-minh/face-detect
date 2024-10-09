@@ -13,4 +13,15 @@ export default class DriverController {
             return responseData(res, "Error", e.message, 500);
         }
     }
+
+    static async getDriverSetting(req, res) {
+        const { driver_id } = req.params;
+        try {
+            const driverSetting = await service.getDriverSetting(driver_id);
+
+            return responseData(res, "Success", driverSetting, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
 }

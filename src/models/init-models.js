@@ -36,7 +36,7 @@ export default function initModels(sequelize) {
   Student.belongsTo(Bus, { as: "bus", foreignKey: "bus_id"});
   Bus.hasMany(Student, { as: "Students", foreignKey: "bus_id"});
   Bus.belongsTo(Driver, { as: "driver", foreignKey: "driver_id"});
-  Driver.hasMany(Bus, { as: "Buses", foreignKey: "driver_id"});
+  Driver.hasOne(Bus, { as: "Bus", foreignKey: "driver_id"});
   Attendance.belongsTo(Journey, { as: "journey", foreignKey: "journey_id"});
   Journey.hasMany(Attendance, { as: "Attendances", foreignKey: "journey_id"});
   Student_Parent.belongsTo(Parent, { as: "parent", foreignKey: "parent_id"});
@@ -48,15 +48,15 @@ export default function initModels(sequelize) {
   Student_Parent.belongsTo(Student, { as: "student", foreignKey: "student_id"});
   Student.hasMany(Student_Parent, { as: "Student_Parents", foreignKey: "student_id"});
   Bus.belongsTo(Teacher, { as: "teacher", foreignKey: "teacher_id"});
-  Teacher.hasMany(Bus, { as: "Buses", foreignKey: "teacher_id"});
+  Teacher.hasOne(Bus, { as: "Bus", foreignKey: "teacher_id"});
   Driver.belongsTo(User, { as: "user", foreignKey: "user_id"});
-  User.hasMany(Driver, { as: "Drivers", foreignKey: "user_id"});
+  User.hasOne(Driver, { as: "Driver", foreignKey: "user_id"});
   Feedback.belongsTo(User, { as: "user", foreignKey: "user_id"});
   User.hasMany(Feedback, { as: "Feedbacks", foreignKey: "user_id"});
   Parent.belongsTo(User, { as: "user", foreignKey: "user_id"});
-  User.hasMany(Parent, { as: "Parents", foreignKey: "user_id"});
+  User.hasOne(Parent, { as: "Parent", foreignKey: "user_id"});
   Teacher.belongsTo(User, { as: "user", foreignKey: "user_id"});
-  User.hasMany(Teacher, { as: "Teachers", foreignKey: "user_id"});
+  User.hasOne(Teacher, { as: "Teacher", foreignKey: "user_id"});
 
   return {
     Attendance,
