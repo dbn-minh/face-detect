@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.get('/details/:driver_id', DriverController.getDriverDetails);
 router.get('/setting/:driver_id', DriverController.getDriverSetting);
-// router.post('/feedback/:driver_id', DriverController.updateDriverProfile);
+router.post('/feedback/:driver_id', DriverController.writeFeedback);
 
 // router.put('/change-password/:driver_id', DriverController.updateDriverProfile);
 // router.put('/avatar/:driver_id', upload.single('avatar'), DriverController.uploadAvatar);

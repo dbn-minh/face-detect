@@ -121,5 +121,23 @@ export const getDriverSetting = async (driver_id) => {
         throw new Error('Error fetching driver details: ' + error.message);
     }
 };
+export const writeFeedback = async (driver_id, title, content) => {
+    try {
+        const driver = await model.Driver.findOne({
+            where: { driver_id },
+            attributes: ['user_id'],
+        });
 
+        const user_id = driver.user_id;
+
+        return await model.Feedback.create({
+            user_id,
+            title,
+            content,
+        });
+
+    } catch (error) {
+        throw new Error('Error writing feedback: ' + error.message);
+    }
+};
 
