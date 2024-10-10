@@ -97,8 +97,7 @@ export const getAllStudentsInformationByParentId = async (parent_id) => {
 
 export const getNotificationsByParentId = async (parent_id) => {
     try {
-        // Tìm student_id từ bảng Student_Parent, lấy kèm Attendance và Notification
-        return await model.Student_Parent.findAll({
+        const studentNotifications = await model.Student_Parent.findAll({
             where: { parent_id: parent_id },
             attributes: [],
             include: [
@@ -124,10 +123,57 @@ export const getNotificationsByParentId = async (parent_id) => {
             ],
         });
 
+        // Array to store alert messages
+        let alertMessages = [];
+
+        // Loop through the notifications to find 'alert' status and create alert messages
+        const notifications = studentNotifications.map((record) => {
+            // get all info from the call
+            const student = record.student;
+            const attendances = student.Attendances;
+
+            // Duyệt qua từng thông báo
+            attendances.forEach((attendance) => {
+                const notifications = attendance.Notifications;
+
+                notifications.forEach((notification) => {
+                    if (notification.status === 'alert') {
+                        alertMessages.push({
+                            alert_message: `Alert message: ${notification.message}`,
+                            notification_id: notification.notification_id,
+                            student_name: student.name,
+                            time_stamp: notification.time_stamp,
+                            image: notification.image || null
+                        });
+                    }
+                });
+            });
+
+            return {
+                student_name: student.name,
+                attendances: attendances.map((attendance) => ({
+                    attendance_id: attendance.attendance_id,
+                    notifications: attendance.Notifications.map((notification) => ({
+                        notification_id: notification.notification_id,
+                        time_stamp: notification.time_stamp,
+                        message: notification.message,
+                        image: notification.image,
+                        status: notification.status
+                    }))
+                }))
+            };
+        });
+
+        // Return the notifications and any alert messages
+        return {
+            alert_messages: alertMessages.length > 0 ? alertMessages : null,
+            notifications
+        };
     } catch (error) {
         throw new Error('Error fetching notifications: ' + error.message);
     }
 };
+
 
 export const getSetting = async (parent_id) => {
     try {

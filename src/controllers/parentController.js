@@ -35,6 +35,23 @@ export default class ParentController {
       }
     }
 
+    //pending
+    // static async getEmergencyPhoto(req, res) {
+    //     const parent_id = req.params.parent_id;
+    //     try {
+    //     const students = await service.getPhotoOfStudentAlighted(parent_id);
+    //
+    //     if (!students || students.length === 0) {
+    //       return responseData(res, 'Fail', 'No students found for this parent', 404);
+    //     }
+    //
+    //     return responseData(res, 'Success', students, 200);
+    //
+    //   } catch (error) {
+    //     return responseData(res, 'Fail', error.message, 500);
+    //   }
+    // }
+
     static async getStudentInformation(req, res) {
         const parent_id = req.params.parent_id;
         try {
