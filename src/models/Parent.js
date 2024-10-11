@@ -16,7 +16,8 @@ export default class Parent extends Model {
       references: {
         model: 'User',
         key: 'user_id'
-      }
+      },
+      unique: "Parent_ibfk_1"
     },
     address: {
       type: DataTypes.STRING(255),
@@ -41,6 +42,7 @@ export default class Parent extends Model {
       },
       {
         name: "user_id",
+        unique: true,
         using: "BTREE",
         fields: [
           { name: "user_id" },

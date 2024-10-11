@@ -18,20 +18,12 @@ export default class Student extends Model {
       type: DataTypes.STRING(50),
       allowNull: false
     },
-    teacher_id: {
+    bus_id: {
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Teacher',
-        key: 'teacher_id'
-      }
-    },
-    driver_id: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: 'Driver',
-        key: 'driver_id'
+        model: 'Bus',
+        key: 'bus_id'
       }
     },
     avatar: {
@@ -56,17 +48,10 @@ export default class Student extends Model {
         ]
       },
       {
-        name: "teacher_id",
+        name: "bus_id",
         using: "BTREE",
         fields: [
-          { name: "teacher_id" },
-        ]
-      },
-      {
-        name: "driver_id",
-        using: "BTREE",
-        fields: [
-          { name: "driver_id" },
+          { name: "bus_id" },
         ]
       },
     ]

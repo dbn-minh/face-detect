@@ -1,10 +1,10 @@
 import _sequelize from 'sequelize';
 const { Model, Sequelize } = _sequelize;
 
-export default class Teacher extends Model {
+export default class Feedback extends Model {
   static init(sequelize, DataTypes) {
   return super.init({
-    teacher_id: {
+    parent_id: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -16,16 +16,19 @@ export default class Teacher extends Model {
       references: {
         model: 'User',
         key: 'user_id'
-      },
-      unique: "Teacher_ibfk_1"
+      }
     },
-    department: {
+    title: {
+      type: DataTypes.STRING(255),
+      allowNull: false
+    },
+    content: {
       type: DataTypes.STRING(255),
       allowNull: false
     }
   }, {
     sequelize,
-    tableName: 'Teacher',
+    tableName: 'Feedback',
     timestamps: false,
     indexes: [
       {
@@ -33,12 +36,11 @@ export default class Teacher extends Model {
         unique: true,
         using: "BTREE",
         fields: [
-          { name: "teacher_id" },
+          { name: "parent_id" },
         ]
       },
       {
         name: "user_id",
-        unique: true,
         using: "BTREE",
         fields: [
           { name: "user_id" },
