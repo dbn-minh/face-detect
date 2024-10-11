@@ -16,7 +16,8 @@ export default class Driver extends Model {
       references: {
         model: 'User',
         key: 'user_id'
-      }
+      },
+      unique: "Driver_ibfk_1"
     },
     license_number: {
       type: DataTypes.STRING(50),
@@ -37,6 +38,7 @@ export default class Driver extends Model {
       },
       {
         name: "user_id",
+        unique: true,
         using: "BTREE",
         fields: [
           { name: "user_id" },

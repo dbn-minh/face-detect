@@ -1,8 +1,6 @@
 import initModels from "../models/init-models.js";
 import sequelize from "../config/database.js";
 let model = initModels(sequelize);
-import bcrypt from 'bcrypt';
-import { Op } from 'sequelize';
 
 export const getAllStudentsInformationByParentId = async (parent_id) => {
     try {
@@ -13,29 +11,36 @@ export const getAllStudentsInformationByParentId = async (parent_id) => {
                 {
                     model: model.Student,
                     as: 'student',
-                    attributes: ['student_id', 'name', 'class', 'teacher_id', 'driver_id', 'avatar'],
+                    attributes: ['student_id', 'name', 'class', 'bus_id', 'avatar'],
                     include: [
                         {
-                            model: model.Teacher,
-                            as: 'teacher',
-                            attributes: ['teacher_id', 'user_id'],
+                            model: model.Bus,
+                            as: 'bus',
+                            attributes: ['bus_id', 'current_location'],
                             include: [
                                 {
-                                    model: model.User,
-                                    as: 'user',
-                                    attributes: ['user_id', 'name', 'phone_number', 'email'],
-                                }
-                            ]
-                        },
-                        {
-                            model: model.Driver,
-                            as: 'driver',
-                            attributes: ['driver_id', 'user_id'],
-                            include: [
+                                    model: model.Teacher,
+                                    as: 'teacher',
+                                    attributes: ['teacher_id', 'user_id'],
+                                    include: [
+                                        {
+                                            model: model.User,
+                                            as: 'user',
+                                            attributes: ['user_id', 'name', 'phone_number', 'email'],
+                                        }
+                                    ]
+                                },
                                 {
-                                    model: model.User,
-                                    as: 'user',
-                                    attributes: ['user_id', 'name', 'phone_number', 'email'],
+                                    model: model.Driver,
+                                    as: 'driver',
+                                    attributes: ['driver_id', 'user_id'],
+                                    include: [
+                                        {
+                                            model: model.User,
+                                            as: 'user',
+                                            attributes: ['user_id', 'name', 'phone_number', 'email'],
+                                        }
+                                    ]
                                 }
                             ]
                         }
@@ -44,72 +49,60 @@ export const getAllStudentsInformationByParentId = async (parent_id) => {
             ]
         });
 
-        // Trả về thông tin học sinh kèm theo giáo viên và tài xế
+        // Return student information along with bus, teacher, and driver details
         return studentInfo.map((record) => ({
             student_id: record.student.student_id,
             name: record.student.name,
             class: record.student.class,
             avatar: record.student.avatar,
-            teacher: record.student.teacher
+            bus: record.student.bus
                 ? {
-                    teacher_id: record.student.teacher.teacher_id,
-                    "Teacher information": record.student.teacher.user
+                    bus_id: record.student.bus.bus_id,
+                    current_location: record.student.bus.current_location || 'Unknown location',  // Use current_location
+                    teacher: record.student.bus.teacher
                         ? {
-                            user_id: record.student.teacher.user.user_id,
-                            name: record.student.teacher.user.name,
-                            phone_number: record.student.teacher.user.phone_number,
-                            email: record.student.teacher.user.email,
+                            teacher_id: record.student.bus.teacher.teacher_id,
+                            "Teacher information": record.student.bus.teacher.user
+                                ? {
+                                    user_id: record.student.bus.teacher.user.user_id,
+                                    name: record.student.bus.teacher.user.name,
+                                    phone_number: record.student.bus.teacher.user.phone_number,
+                                    email: record.student.bus.teacher.user.email,
+                                }
+                                : null,
+                        }
+                        : null,
+                    driver: record.student.bus.driver
+                        ? {
+                            driver_id: record.student.bus.driver.driver_id,
+                            "Driver information": record.student.bus.driver.user
+                                ? {
+                                    user_id: record.student.bus.driver.user.user_id,
+                                    name: record.student.bus.driver.user.name,
+                                    phone_number: record.student.bus.driver.user.phone_number,
+                                    email: record.student.bus.driver.user.email,
+                                }
+                                : null,
                         }
                         : null,
                 }
-                : null,
-            driver: record.student.driver
-                ? {
-                    driver_id: record.student.driver.driver_id,
-                    "Driver information": record.student.driver.user
-                        ? {
-                            user_id: record.student.driver.user.user_id,
-                            name: record.student.driver.user.name,
-                            phone_number: record.student.driver.user.phone_number,
-                            email: record.student.driver.user.email,
-                        }
-                        : null,
-                }
-                : null,
+                : null
         }));
     } catch (error) {
         throw new Error('Error fetching students for parent: ' + error.message);
     }
 };
 
-
-export const getCurrentLocationByDriverId = async (driver_id) => {
-    try {
-        const bus = await model.Bus.findOne({
-            where: { driver_id: driver_id },
-            attributes: ['current_location'],
-        });
-
-        if (!bus) {
-            return null;
-        }
-
-        return bus.current_location;
-    } catch (error) {
-        throw new Error('Error fetching current location: ' + error.message);
-    }
-};
-
 export const getNotificationsByParentId = async (parent_id) => {
     try {
-        // Tìm student_id từ bảng Student_Parent, lấy kèm Attendance và Notification
-        return await model.Student_Parent.findAll({
+        const studentNotifications = await model.Student_Parent.findAll({
             where: { parent_id: parent_id },
+            attributes: [],
             include: [
                 {
                     model: model.Student,
                     as: 'student',
-                    attributes: ['student_id', 'name'],
+                    attributes: ['name'],
                     include: [
                         {
                             model: model.Attendance,
@@ -128,10 +121,57 @@ export const getNotificationsByParentId = async (parent_id) => {
             ],
         });
 
+        // Array to store alert messages
+        let alertMessages = [];
+
+        // Loop through the notifications to find 'alert' status and create alert messages
+        const notifications = studentNotifications.map((record) => {
+            // get all info from the call
+            const student = record.student;
+            const attendances = student.Attendances;
+
+            // Duyệt qua từng thông báo
+            attendances.forEach((attendance) => {
+                const notifications = attendance.Notifications;
+
+                notifications.forEach((notification) => {
+                    if (notification.status === 'alert') {
+                        alertMessages.push({
+                            alert_message: `Alert message: ${notification.message}`,
+                            notification_id: notification.notification_id,
+                            student_name: student.name,
+                            time_stamp: notification.time_stamp,
+                            image: notification.image || null
+                        });
+                    }
+                });
+            });
+
+            return {
+                student_name: student.name,
+                attendances: attendances.map((attendance) => ({
+                    attendance_id: attendance.attendance_id,
+                    notifications: attendance.Notifications.map((notification) => ({
+                        notification_id: notification.notification_id,
+                        time_stamp: notification.time_stamp,
+                        message: notification.message,
+                        image: notification.image,
+                        status: notification.status
+                    }))
+                }))
+            };
+        });
+
+        // Return the notifications and any alert messages
+        return {
+            alert_messages: alertMessages.length > 0 ? alertMessages : null,
+            notifications
+        };
     } catch (error) {
         throw new Error('Error fetching notifications: ' + error.message);
     }
 };
+
 
 export const getSetting = async (parent_id) => {
     try {
@@ -142,19 +182,24 @@ export const getSetting = async (parent_id) => {
                 {
                     model: model.Student,
                     as: 'student',
-                    attributes: ['student_id', 'name', 'class', 'driver_id', 'avatar', 'feature_vector'],
+                    attributes: ['name', 'class', 'avatar', 'feature_vector'],
                     include: [
                         {
-                            model: model.Driver,
-                            as: 'driver',
-                            attributes: ['driver_id'],
-                            include: [
-                                {
-                                    model: model.Bus,
-                                    as: 'Buses',
-                                    attributes: ['bus_id', 'license_plate'],
-                                }
-                            ]
+                            model: model.Bus,
+                            as: 'bus',
+                            attributes: ['bus_id', 'license_plate'],
+                        }
+                    ]
+                },
+                {
+                    model: model.Parent,
+                    as: 'parent',
+                    attributes: ['address'],
+                    include: [
+                        {
+                            model: model.User,
+                            as: 'user',
+                            attributes: ['phone_number'],
                         }
                     ]
                 }
@@ -164,6 +209,66 @@ export const getSetting = async (parent_id) => {
         throw new Error('Error fetching students for parent: ' + error.message);
     }
 };
+
+export const updateSetting = async (parent_id, updateData) => {
+    const { name, className, address, phone_number } = updateData;
+
+    try {
+        // Fetch the student_id based on the parent_id
+        const studentParentRecord = await model.Student_Parent.findOne({
+            where: { parent_id: parent_id },
+            attributes: ['student_id'],
+        });
+
+        const student_id = studentParentRecord.student_id;
+
+        await model.Student.update(
+            { name: name, class: className },
+            { where: { student_id: student_id } }
+        );
+
+        await model.Parent.update(
+            { address: address },
+            { where: { parent_id: parent_id } }
+        );
+
+        const parent = await model.Parent.findOne({
+            where: { parent_id: parent_id },
+            include: [{ model: model.User, as: 'user' }]
+        });
+
+        if (parent && parent.user) {
+            await model.User.update(
+                { phone_number: phone_number },
+                { where: { user_id: parent.user.user_id } }
+            );
+        }
+
+        return { message: 'Update successful' };
+    } catch (error) {
+        throw new Error('Error updating settings: ' + error.message);
+    }
+};
+export const writeFeedback = async (parent_id, title, content) => {
+    try {
+        const parent = await model.Parent.findOne({
+            where: { parent_id },
+            attributes: ['user_id'],
+        });
+
+        const user_id = parent.user_id;
+
+        return await model.Feedback.create({
+            user_id,
+            title,
+            content,
+        });
+
+    } catch (error) {
+        throw new Error('Error writing feedback: ' + error.message);
+    }
+};
+
 
 
 
