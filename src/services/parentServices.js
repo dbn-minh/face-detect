@@ -1,8 +1,6 @@
 import initModels from "../models/init-models.js";
 import sequelize from "../config/database.js";
 let model = initModels(sequelize);
-import bcrypt from 'bcrypt';
-import { Op } from 'sequelize';
 
 export const getAllStudentsInformationByParentId = async (parent_id) => {
     try {
@@ -221,10 +219,6 @@ export const updateSetting = async (parent_id, updateData) => {
             where: { parent_id: parent_id },
             attributes: ['student_id'],
         });
-
-        if (!studentParentRecord) {
-            throw new Error('No student found for the given parent.');
-        }
 
         const student_id = studentParentRecord.student_id;
 
