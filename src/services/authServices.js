@@ -11,7 +11,7 @@ import {
 
 let model = initModels(sequelize);
 
-export const signupService = async (role_id, name, phone_number, email, password, other) => {
+export const signupService = async (role_id, name, phone_number, email, password, other, relationship) => {
   try {
     let check_user = await model.User.findOne({
       where: { email },
@@ -34,6 +34,7 @@ export const signupService = async (role_id, name, phone_number, email, password
       case 1: // Parent
         await model.Parent.create({
           address: other,
+          relationship: relationship,
           user_id: newUser.user_id,
         });
         break;
