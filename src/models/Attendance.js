@@ -35,9 +35,9 @@ export default class Attendance extends Model {
       allowNull: true
     },
     status: {
-      type: DataTypes.ENUM('boarded','alighted','not alighted','completed'),
+      type: DataTypes.ENUM('absent','boarded','alighted','not alighted','completed'),
       allowNull: true,
-      defaultValue: "boarded"
+      defaultValue: "absent"
     }
   }, {
     sequelize,
