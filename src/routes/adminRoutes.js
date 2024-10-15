@@ -5,23 +5,54 @@ import { verifyToken } from "../config/jwt.js";  // Import the middleware
 
 const router = express.Router();
 
-//For warnings and tracking
-router.get('/notification', AdminController.getNotifications);
-// router.get('/tracking/:admin_id', AdminController.getAdminTracking);
+// main
+router.get('/v1/notifications', AdminController.getNotifications);
+router.get('/v1/dashboard',  AdminController.getDashboard);
+router.get('/v1/setting',  AdminController.getSetting);
+router.get('/v1/report',  AdminController.getReport);
+router.put('/v1/update',  AdminController.updateInfo);
+// router.put('/change-password',  AdminController.updatePassword);
 
-//For all Users
-router.get('/profile',  AdminController.getAllUsers);
-router.post('/profile', AdminController.createNewProfile);
-router.put('/profile/:user_id', AdminController.updateProfiles);
-router.delete('/profile/:user_id', AdminController.deleteAdminProfile);
+// Routes - Buses
+router.get('/v1/routes',  AdminController.getAllRoutes);
+router.get('/v1/routes/:bus_id',  AdminController.getBusInfo);
+router.put('/v1/routes/:bus_id',  AdminController.updateBusInfo);
+router.post('/v1/routes',  AdminController.addBus);
+router.delete('/v1/routes/:bus_id',  AdminController.deleteBus);
 
-//For Students
-router.get('/details', AdminController.getStudentDetails);
-router.get('/register-students', AdminController.listPendingRegistrations);
-router.get('/teachers', AdminController.getAllTeachers);
-router.post('/assign', AdminController.assignTeachersToStudents);
-router.put('/adjust/:student_id', AdminController.updateStudentInfo);
-router.get('/tracking', AdminController.getAdminTracking);
+// Driver
+router.get('/v1/drivers',  AdminController.getAllDrivers);
+router.get('/v1/drivers/:driver_id',  AdminController.getDriverInfo);
+router.put('/v1/drivers/:driver_id',  AdminController.updateDriverInfo);
+router.post('/v1/drivers',  AdminController.addDriver);
+router.delete('/v1/drivers/:driver_id',  AdminController.deleteDriver);
+// Handle multiple delete
+
+// Parent
+router.get('/v1/parents',  AdminController.getAllParents);
+router.get('/v1/parents/:parent_id',  AdminController.getParentInfo);
+router.put('/v1/parents/:parent_id',  AdminController.updateParentInfo);
+router.post('/v1/parents',  AdminController.addParent);
+router.delete('/v1/parents/:parent_id',  AdminController.deleteParent);
+// Handle multiple delete
+
+// Teacher
+router.get('/v1/teachers',  AdminController.getAllTeachers);
+router.get('/v1/teachers/:teacher_id',  AdminController.getTeacherInfo);
+router.put('/v1/teachers/:teacher_id',  AdminController.updateTeacherInfo);
+router.post('/v1/teachers',  AdminController.addTeacher);
+router.delete('/v1/teachers/:teacher_id',  AdminController.deleteTeacher);
+
+// Student
+router.post('/v1/routes/:bus_id/add-student',  AdminController.addStudentToBus);
+router.get('/v1/student-info/:student_id',  AdminController.getStudentInfo);
+router.put('/v1/student-info/:student_id',  AdminController.updateStudentInfo);
+router.post('/v1/student-info/:student_id',  AdminController.addStudentInfo);
+router.get('/v1/students',  AdminController.getAllStudents);
+router.put('/v1/change-route/:student_id',  AdminController.updateStudentRoute);
+router.delete('/v1/delete-student/:student_id',  AdminController.deleteStudent);
+//handle add and delete multiple students
+// router.put('/v1/upload/:student_id',  AdminController.uploadAvatar);
 
 
 export default router;

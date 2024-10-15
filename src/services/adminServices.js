@@ -590,3 +590,268 @@ export const getAllCurrentJourneysWithLocationsStudentsAndTeachers = async () =>
         return { error: "An error occurred while fetching journey details", data: null };
     }
 };
+
+export default class service {
+    // Main services
+    static async getNotifications() {
+        try {
+            // Logic for fetching notifications
+        } catch (error) {
+            throw new Error('Error fetching notifications: ' + error.message);
+        }
+    }
+
+    static async getDashboard() {
+        try {
+            // Logic for fetching dashboard data
+        } catch (error) {
+            throw new Error('Error fetching dashboard: ' + error.message);
+        }
+    }
+
+    static async getSetting() {
+        try {
+            // Logic for fetching setting data
+        } catch (error) {
+            throw new Error('Error fetching settings: ' + error.message);
+        }
+    }
+
+    static async getReport() {
+        try {
+            // Logic for fetching report data
+        } catch (error) {
+            throw new Error('Error fetching report: ' + error.message);
+        }
+    }
+
+    static async updateInfo(info) {
+        try {
+            // Logic for updating info
+        } catch (error) {
+            throw new Error('Error updating info: ' + error.message);
+        }
+    }
+
+    // Routes - Buses
+    static async getAllRoutes() {
+        try {
+            // Logic for fetching all routes
+        } catch (error) {
+            throw new Error('Error fetching routes: ' + error.message);
+        }
+    }
+
+    static async getBusInfo(bus_id) {
+        try {
+            // Logic for fetching bus info by ID
+        } catch (error) {
+            throw new Error('Error fetching bus info: ' + error.message);
+        }
+    }
+
+    static async updateBusInfo(bus_id, busData) {
+        try {
+            // Logic for updating bus info
+        } catch (error) {
+            throw new Error('Error updating bus info: ' + error.message);
+        }
+    }
+
+    static async addBus(busData) {
+        try {
+            // Logic for adding a new bus
+        } catch (error) {
+            throw new Error('Error adding bus: ' + error.message);
+        }
+    }
+
+    static async deleteBus(bus_id) {
+        try {
+            // Logic for deleting a bus by ID
+        } catch (error) {
+            throw new Error('Error deleting bus: ' + error.message);
+        }
+    }
+
+    // Drivers
+    static async getAllDrivers() {
+        try {
+            // Logic for fetching all drivers
+        } catch (error) {
+            throw new Error('Error fetching drivers: ' + error.message);
+        }
+    }
+
+    static async getDriverInfo(driver_id) {
+        try {
+            // Logic for fetching driver info by ID
+        } catch (error) {
+            throw new Error('Error fetching driver info: ' + error.message);
+        }
+    }
+
+    static async updateDriverInfo(driver_id, driverData) {
+        try {
+            // Logic for updating driver info
+        } catch (error) {
+            throw new Error('Error updating driver info: ' + error.message);
+        }
+    }
+
+    static async addDriver(driverData) {
+        try {
+            // Logic for adding a new driver
+        } catch (error) {
+            throw new Error('Error adding driver: ' + error.message);
+        }
+    }
+
+    static async deleteDriver(driver_id) {
+        try {
+            // Logic for deleting a driver by ID
+        } catch (error) {
+            throw new Error('Error deleting driver: ' + error.message);
+        }
+    }
+
+    // Parents
+    static async getAllParents() {
+        try {
+            // Logic for fetching all parents
+        } catch (error) {
+            throw new Error('Error fetching parents: ' + error.message);
+        }
+    }
+
+    static async getParentInfo(parent_id) {
+        try {
+            // Logic for fetching parent info by ID
+        } catch (error) {
+            throw new Error('Error fetching parent info: ' + error.message);
+        }
+    }
+
+    static async updateParentInfo(parent_id, parentData) {
+        try {
+            // Logic for updating parent info
+        } catch (error) {
+            throw new Error('Error updating parent info: ' + error.message);
+        }
+    }
+
+    static async addParent(parentData) {
+        try {
+            // Logic for adding a new parent
+        } catch (error) {
+            throw new Error('Error adding parent: ' + error.message);
+        }
+    }
+
+    static async deleteParent(parent_id) {
+        try {
+            // Logic for deleting a parent by ID
+        } catch (error) {
+            throw new Error('Error deleting parent: ' + error.message);
+        }
+    }
+
+    // Teachers
+    static async getAllTeachers() {
+        try {
+            // Logic for fetching all teachers
+        } catch (error) {
+            throw new Error('Error fetching teachers: ' + error.message);
+        }
+    }
+
+    static async getTeacherInfo(teacher_id) {
+        try {
+            // Logic for fetching teacher info by ID
+        } catch (error) {
+            throw new Error('Error fetching teacher info: ' + error.message);
+        }
+    }
+
+    static async updateTeacherInfo(teacher_id, teacherData) {
+        try {
+            // Logic for updating teacher info
+        } catch (error) {
+            throw new Error('Error updating teacher info: ' + error.message);
+        }
+    }
+
+    static async addTeacher(teacherData) {
+        try {
+            // Logic for adding a new teacher
+        } catch (error) {
+            throw new Error('Error adding teacher: ' + error.message);
+        }
+    }
+
+    static async deleteTeacher(teacher_id) {
+        try {
+            // Logic for deleting a teacher by ID
+        } catch (error) {
+            throw new Error('Error deleting teacher: ' + error.message);
+        }
+    }
+
+    // Students
+    static async addStudentToBus(bus_id, studentData) {
+        try {
+            // Logic for adding a student to a bus
+        } catch (error) {
+            throw new Error('Error adding student to bus: ' + error.message);
+        }
+    }
+
+    static async getStudentInfo(student_id) {
+        try {
+            // Logic for fetching student info by ID
+        } catch (error) {
+            throw new Error('Error fetching student info: ' + error.message);
+        }
+    }
+
+    static async updateStudentInfo(student_id, studentData) {
+        try {
+            // Logic for updating student info
+        } catch (error) {
+            throw new Error('Error updating student info: ' + error.message);
+        }
+    }
+
+    static async addStudentInfo(student_id, studentData) {
+        try {
+            // Logic for adding student info
+        } catch (error) {
+            throw new Error('Error adding student info: ' + error.message);
+        }
+    }
+
+    static async getAllStudents() {
+        try {
+            // Logic for fetching all students
+        } catch (error) {
+            throw new Error('Error fetching students: ' + error.message);
+        }
+    }
+
+    static async updateStudentRoute(student_id, routeData) {
+        try {
+            // Logic for updating a student's route
+        } catch (error) {
+            throw new Error('Error updating student route: ' + error.message);
+        }
+    }
+
+    static async deleteStudent(student_id) {
+        try {
+            // Logic for deleting a student by ID
+        } catch (error) {
+            throw new Error('Error deleting student: ' + error.message);
+        }
+    }
+}
+

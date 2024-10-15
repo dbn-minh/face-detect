@@ -1,185 +1,298 @@
 import { responseData } from "../config/response.js";
-import * as service from "../services/adminServices.js";
+import service from "../services/adminServices.js";
 
 export default class AdminController {
-    // Fetch details of all students, parents and teachers relevant
-    static async getStudentDetails(req, res) {
-        try {
-            const { error, data } = await service.getAdminDetails();
-
-            if (error) {
-                return responseData(res, "Fail", error, 404);
-            }
-
-            return responseData(res, "Success", data, 200);
-        } catch (e) {
-            return responseData(res, "Error", e.message, 500);
-        }
-    }
-
-    // Fetch notifications for all students
+    // Main controllers
     static async getNotifications(req, res) {
         try {
-            // Step 1: Get all student IDs
-            const { error: studentError, data: student_ids } = await service.getAllStudentIDs();
-
-            if (studentError || student_ids.length === 0) {
-                return responseData(res, "Fail", studentError || "No students found", 404);
-            }
-
-            // Step 2: Get attendance IDs for those students
-            const { error: attendanceError, data: attendance_ids } = await service.getAttendanceIDsByStudentIDs(student_ids);
-
-            if (attendanceError || attendance_ids.length === 0) {
-                return responseData(res, "Fail", attendanceError || "No attendance records found for these students", 404);
-            }
-
-            // Step 3: Get notifications linked to those attendance records
-            const { error: notificationError, data: notifications } = await service.getNotificationsByAttendanceIDs(attendance_ids);
-
-            if (notificationError || notifications.length === 0) {
-                return responseData(res, "Fail", notificationError || "No notifications found for these students", 404);
-            }
-
-            // Return the notifications
-            return responseData(res, "Success", notifications, 200);
-
-        } catch (error) {
-            return responseData(res, "Error", "An error occurred while fetching notifications", 500);
-        }
-    }
-
-    static async getAllUsers(req, res) {
-        try {
-            const { error, data } = await service.getAllUsersWithRoleDetails();
-
-            if (error) {
-                return responseData(res, "Fail", error, 404);
-            }
-
-            return responseData(res, "Success", data, 200);
+            const homepage = await service.getNotifications();
+            return responseData(res, "Success", homepage, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
     }
 
-static async createNewProfile(req, res) {
-    const { role_id, name, phone_number, email, password, other } = req.body;
-    const { error, data, status } = await service.adminCreateUserService(
-      role_id,
-      name,
-      phone_number,
-      email,
-      password,
-      other
-    );
-
-    if (error) {
-      return responseData(res, error, "", status);
-    }
-    return responseData(res, "User created successfully", data, status);
-  }
-
-  //Update Profiles by user_id
-    static async updateProfiles(req, res) {
-    const { user_id } = req.params;
-    const { role_id, name, phone_number, email, password, other } = req.body;
-
-    const { error, data, status } = await service.adminUpdateUserService(
-      user_id,
-      role_id,
-      name,
-      phone_number,
-      email,
-      password,
-      other
-    );
-
-    if (error) {
-      return responseData(res, error, "", status);
-    }
-    return responseData(res, data, "", status);
-  }
-
-  //Delete profiles by ID
-    static async deleteAdminProfile(req, res) {
-        const { user_id } = req.params;
-
-        const { error, data, status } = await service.adminDeleteUserService(user_id);
-
-        if (error) {
-            return responseData(res, error, "", status);
+    static async getDashboard(req, res) {
+        try {
+            const homepage = await service.getDashboard();
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
         }
-        return responseData(res, data, "", status);
     }
 
-    static async listPendingRegistrations(req, res) {
-        const { error, data } = await service.listPendingRegistrationsService();
-
-        if (error) {
-            return responseData(res, "Fail", error, 404);
+    static async getSetting(req, res) {
+        try {
+            const homepage = await service.getSetting();
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
         }
-        return responseData(res, "Success", data, 200);
     }
 
+    static async getReport(req, res) {
+        try {
+            const homepage = await service.getReport();
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async updateInfo(req, res) {
+        try {
+            const homepage = await service.updateInfo(req.body);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    // Routes - Buses
+    static async getAllRoutes(req, res) {
+        try {
+            const homepage = await service.getAllRoutes();
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async getBusInfo(req, res) {
+        try {
+            const homepage = await service.getBusInfo(req.params.bus_id);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async updateBusInfo(req, res) {
+        try {
+            const homepage = await service.updateBusInfo(req.params.bus_id, req.body);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async addBus(req, res) {
+        try {
+            const homepage = await service.addBus(req.body);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async deleteBus(req, res) {
+        try {
+            const homepage = await service.deleteBus(req.params.bus_id);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    // Drivers
+    static async getAllDrivers(req, res) {
+        try {
+            const homepage = await service.getAllDrivers();
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async getDriverInfo(req, res) {
+        try {
+            const homepage = await service.getDriverInfo(req.params.driver_id);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async updateDriverInfo(req, res) {
+        try {
+            const homepage = await service.updateDriverInfo(req.params.driver_id, req.body);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async addDriver(req, res) {
+        try {
+            const homepage = await service.addDriver(req.body);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async deleteDriver(req, res) {
+        try {
+            const homepage = await service.deleteDriver(req.params.driver_id);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    // Parents
+    static async getAllParents(req, res) {
+        try {
+            const homepage = await service.getAllParents();
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async getParentInfo(req, res) {
+        try {
+            const homepage = await service.getParentInfo(req.params.parent_id);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async updateParentInfo(req, res) {
+        try {
+            const homepage = await service.updateParentInfo(req.params.parent_id, req.body);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async addParent(req, res) {
+        try {
+            const homepage = await service.addParent(req.body);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async deleteParent(req, res) {
+        try {
+            const homepage = await service.deleteParent(req.params.parent_id);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    // Teachers
     static async getAllTeachers(req, res) {
-        const { error, data } = await service.getAllTeachersService();
-
-        if (error) {
-            return responseData(res, "Fail", error, 404);
-        }
-        return responseData(res, "Success", data, 200);
-    }
-
-    static async assignTeachersToStudents(req, res) {
         try {
-            const { teacher_id, student_ids } = req.body;
-
-            // Assign the teacher to the students
-            const { error, data } = await service.assignTeacherToStudentsService(teacher_id, student_ids);
-
-            if (error) {
-                return responseData(res, "Fail", error, 404);
-            }
-
-            // Response with detailed information
-            return responseData(res, "Success", data, 200);
+            const homepage = await service.getAllTeachers();
+            return responseData(res, "Success", homepage, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
     }
+
+    static async getTeacherInfo(req, res) {
+        try {
+            const homepage = await service.getTeacherInfo(req.params.teacher_id);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async updateTeacherInfo(req, res) {
+        try {
+            const homepage = await service.updateTeacherInfo(req.params.teacher_id, req.body);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async addTeacher(req, res) {
+        try {
+            const homepage = await service.addTeacher(req.body);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async deleteTeacher(req, res) {
+        try {
+            const homepage = await service.deleteTeacher(req.params.teacher_id);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    // Students
+    static async addStudentToBus(req, res) {
+        try {
+            const homepage = await service.addStudentToBus(req.params.bus_id, req.body);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async getStudentInfo(req, res) {
+        try {
+            const homepage = await service.getStudentInfo(req.params.student_id);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
     static async updateStudentInfo(req, res) {
         try {
-            const { student_id } = req.params;
-            const updateData = req.body;
-
-            // Update the student information
-            const { error, data } = await service.updateStudentInfoService(student_id, updateData);
-
-            if (error) {
-                return responseData(res, "Fail", error, 404);
-            }
-
-            // Response with detailed information
-            return responseData(res, "Success", data, 200);
+            const homepage = await service.updateStudentInfo(req.params.student_id, req.body);
+            return responseData(res, "Success", homepage, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
     }
-    // Get all current bus locations grouped by journeys, with student and teacher details
-    static async getAdminTracking(req, res) {
+
+    static async addStudentInfo(req, res) {
         try {
-            // Call the service to get all current journey locations, student, and teacher details
-            const { error, data } = await service.getAllCurrentJourneysWithLocationsStudentsAndTeachers();
-
-            if (error) {
-                return responseData(res, "Fail", error, 404);
-            }
-
-            return responseData(res, "Success", data, 200);
+            const homepage = await service.addStudentInfo(req.params.student_id, req.body);
+            return responseData(res, "Success", homepage, 200);
         } catch (e) {
-            console.error("Error in getAdminTracking:", e.message);
-            return responseData(res, "Error", "An unexpected error occurred", 500);
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async getAllStudents(req, res) {
+        try {
+            const homepage = await service.getAllStudents();
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async updateStudentRoute(req, res) {
+        try {
+            const homepage = await service.updateStudentRoute(req.params.student_id, req.body);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async deleteStudent(req, res) {
+        try {
+            const homepage = await service.deleteStudent(req.params.student_id);
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
         }
     }
 }
