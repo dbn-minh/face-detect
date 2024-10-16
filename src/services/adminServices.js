@@ -6,6 +6,7 @@ import {
   createToken,
 } from "../config/jwt.js";
 import {Op} from "sequelize";
+import { v4 as uuidv4 } from 'uuid';
 let model = initModels(sequelize);
 
 export const getAdminDetails = async () => {
@@ -636,7 +637,9 @@ export default class service {
     // Routes - Buses
     static async getAllRoutes() {
         try {
-            // Logic for fetching all routes
+            return await model.Bus.findAll({
+            attributes: ['bus_id', 'license_plate', 'capacity'], // Specify the required fields
+            });
         } catch (error) {
             throw new Error('Error fetching routes: ' + error.message);
         }
@@ -644,11 +647,52 @@ export default class service {
 
     static async getBusInfo(bus_id) {
         try {
-            // Logic for fetching bus info by ID
+            const busInfo = await model.Bus.findOne({
+                where: { bus_id },
+                attributes: ['bus_id', 'license_plate', 'capacity', 'status'],
+                include: [
+                    {
+                        model: model.Student,
+                        as: 'Students',
+                        attributes: ['student_id', 'name', 'class', 'avatar'],
+                        include: [
+                            {
+                                model: model.Parent,
+                                as: 'parent_id_Parents',
+                                attributes: ['address'],
+                                include: [
+                                    {
+                                        model: model.User,
+                                        as: 'user',
+                                        attributes: ['phone_number'],
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            // Map and structure the response payload
+            return {
+                bus_id: busInfo.bus_id,
+                capacity: busInfo.capacity,
+                license_plate: busInfo.license_plate,
+                status: busInfo.status,
+                students: busInfo.Students.map((student) => ({
+                    student_id: student.student_id,
+                    name: student.name,
+                    class: student.class,
+                    avatar: student.avatar,
+                    address: student.parent_id_Parents[0]?.address || null, // Access first parent address safely
+                    phone_number: student.parent_id_Parents[0]?.user?.phone_number || null,
+                })),
+            };
         } catch (error) {
             throw new Error('Error fetching bus info: ' + error.message);
         }
     }
+
 
     static async updateBusInfo(bus_id, busData) {
         try {
@@ -677,11 +721,30 @@ export default class service {
     // Drivers
     static async getAllDrivers() {
         try {
-            // Logic for fetching all drivers
+            const drivers = await model.Driver.findAll({
+                attributes: ['driver_id', 'license_number'],
+                include: [
+                    {
+                        model: model.User,
+                        as: 'user',
+                        attributes: ['user_id', 'name', 'phone_number', 'email'],
+                    },
+                ],
+            });
+
+            return drivers.map((driver) => ({
+                driver_id: driver.driver_id,
+                license_number: driver.license_number,
+                user_id: driver.user.user_id,
+                name: driver.user.name,
+                phone_number: driver.user.phone_number,
+                email: driver.user.email,
+            }));
         } catch (error) {
             throw new Error('Error fetching drivers: ' + error.message);
         }
     }
+
 
     static async getDriverInfo(driver_id) {
         try {
@@ -699,11 +762,49 @@ export default class service {
         }
     }
 
-    static async addDriver(driverData) {
+    static async addDriver({ name, phone_number, email, license_number }) {
         try {
-            // Logic for adding a new driver
-        } catch (error) {
-            throw new Error('Error adding driver: ' + error.message);
+            // Fetch the role_id for 'Driver'
+            const driverRole = await model.Role.findOne({
+                where: { role_name: 'Driver' },
+                attributes: ['role_id'],
+            });
+
+            // Generate and hash the password
+            // const generatedPassword = uuidv4().slice(0, 8); // Auto gen random password
+            const generatedPassword = '123456789' // Hardcode to 123456789
+            const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+
+            // Create a new user
+            const newUser = await model.User.create({
+                role_id: driverRole.role_id,
+                name,
+                phone_number,
+                email,
+                password: hashedPassword,
+                refresh_token: null,
+            });
+
+            // Create a new driver with the user's ID
+            const newDriver = await model.Driver.create({
+                user_id: newUser.user_id,
+                license_number,
+            });
+
+            // Return the driver and user data, including the plain password
+            return {
+                driver_id: newDriver.driver_id,
+                license_number: newDriver.license_number,
+                user: {
+                    user_id: newUser.user_id,
+                    name: newUser.name,
+                    phone_number: newUser.phone_number,
+                    email: newUser.email,
+                    password: generatedPassword, // Plain password for the response
+                },
+            };
+        } catch (e) {
+            throw new Error('Error creating driver: ' + e.message);
         }
     }
 

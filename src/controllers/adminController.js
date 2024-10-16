@@ -51,8 +51,8 @@ export default class AdminController {
     // Routes - Buses
     static async getAllRoutes(req, res) {
         try {
-            const homepage = await service.getAllRoutes();
-            return responseData(res, "Success", homepage, 200);
+            const buses = await service.getAllRoutes();
+            return responseData(res, "Success", buses, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -60,8 +60,8 @@ export default class AdminController {
 
     static async getBusInfo(req, res) {
         try {
-            const homepage = await service.getBusInfo(req.params.bus_id);
-            return responseData(res, "Success", homepage, 200);
+            const busInfo = await service.getBusInfo(req.params.bus_id);
+            return responseData(res, "Success", busInfo, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -97,8 +97,8 @@ export default class AdminController {
     // Drivers
     static async getAllDrivers(req, res) {
         try {
-            const homepage = await service.getAllDrivers();
-            return responseData(res, "Success", homepage, 200);
+            const drivers = await service.getAllDrivers();
+            return responseData(res, "Success", drivers, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -124,8 +124,28 @@ export default class AdminController {
 
     static async addDriver(req, res) {
         try {
-            const homepage = await service.addDriver(req.body);
-            return responseData(res, "Success", homepage, 200);
+            // Log the entire request body to confirm it's received
+            console.log('Request Body:', req.body);
+
+            // Extract the relevant fields from req.body
+            const { name, phone_number, email, license_number } = req.body;
+
+            // Validate the request body
+            if (!name || !phone_number || !email || !license_number) {
+                throw new Error(
+                    'Invalid input: Please provide all required fields (name, phone_number, email, license_number)'
+                );
+            }
+
+            // Call the service layer with extracted data
+            const addDriver = await service.addDriver({
+                name,
+                phone_number,
+                email,
+                license_number,
+            });
+
+            return responseData(res, "Success", addDriver, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }

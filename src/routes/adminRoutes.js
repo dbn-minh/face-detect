@@ -9,22 +9,23 @@ const router = express.Router();
 router.get('/v1/notifications', AdminController.getNotifications);
 router.get('/v1/dashboard',  AdminController.getDashboard);
 router.get('/v1/setting',  AdminController.getSetting);
-router.get('/v1/report',  AdminController.getReport);
+router.get('/v1/re  port',  AdminController.getReport);
 router.put('/v1/update',  AdminController.updateInfo);
 // router.put('/change-password',  AdminController.updatePassword);
 
 // Routes - Buses
 router.get('/v1/routes',  AdminController.getAllRoutes);
 router.get('/v1/routes/:bus_id',  AdminController.getBusInfo);
-router.put('/v1/routes/:bus_id',  AdminController.updateBusInfo);
+// Pending: get all Student which are not assign to bus
+router.put('/v1/routes/:bus_id',  AdminController.updateBusInfo); // Pending: Should update bus_id to multiple students
 router.post('/v1/routes',  AdminController.addBus);
 router.delete('/v1/routes/:bus_id',  AdminController.deleteBus);
 
 // Driver
 router.get('/v1/drivers',  AdminController.getAllDrivers);
-router.get('/v1/drivers/:driver_id',  AdminController.getDriverInfo);
-router.put('/v1/drivers/:driver_id',  AdminController.updateDriverInfo);
+// router.get('/v1/drivers/:driver_id',  AdminController.getDriverInfo);
 router.post('/v1/drivers',  AdminController.addDriver);
+router.put('/v1/drivers/:driver_id',  AdminController.updateDriverInfo);
 router.delete('/v1/drivers/:driver_id',  AdminController.deleteDriver);
 // Handle multiple delete
 
