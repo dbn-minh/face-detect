@@ -424,31 +424,124 @@ export default class service {
     // Teachers
     static async getAllTeachers() {
         try {
-            // Logic for fetching all teachers
+            const teachers = await model.Teacher.findAll({
+                include: [
+                    {
+                        model: model.User,
+                        as: 'user', // Ensure this matches the alias in your models
+                        attributes: ['user_id', 'name', 'phone_number', 'email']
+                    }
+                ]
+            });
+
+            // Format the response payload
+            return teachers.map(teacher => ({
+                teacher_id: teacher.teacher_id,
+                department: teacher.department,
+                user_id: teacher.user.user_id,
+                name: teacher.user.name,
+                phone_number: teacher.user.phone_number,
+                email: teacher.user.email
+            }));
         } catch (error) {
             throw new Error('Error fetching teachers: ' + error.message);
         }
     }
 
-    static async getTeacherInfo(teacher_id) {
+    static async updateTeacherInfo(user_id, { name, phone_number, email, department}) {
         try {
-            // Logic for fetching teacher info by ID
-        } catch (error) {
-            throw new Error('Error fetching teacher info: ' + error.message);
-        }
-    }
+            // Check if the user already exists (with a different user_id)
+            const existingUser = await findExistingUser(email, phone_number);
+            if (existingUser && existingUser.user_id !== parseInt(user_id)) {
+                return { message: 'Email or phone number already exists.', user: existingUser };
+            }
 
-    static async updateTeacherInfo(teacher_id, teacherData) {
-        try {
-            // Logic for updating teacher info
+            // Find the teacher along with the associated user by user_id
+            const teacher = await model.Teacher.findOne({
+                where: { user_id },
+                include: {
+                    model: model.User,
+                    as: 'user'
+                }
+            });
+
+            if (!teacher) {
+                return null; // Teacher not found
+            }
+
+            // Update the associated user's details
+            const user = teacher.user;
+            user.name = name;
+            user.phone_number = phone_number;
+            user.email = email;
+            await user.save(); // Save updated user details
+
+            // Update the teacher-specific details
+            teacher.department = department;
+            await teacher.save(); // Save updated teacher details
+
+            // Return the updated information
+            return {
+                teacher_id: teacher.teacher_id,
+                department: teacher.department,
+                user: {
+                    user_id: user.user_id,
+                    name: user.name,
+                    phone_number: user.phone_number,
+                    email: user.email
+                }
+            };
         } catch (error) {
             throw new Error('Error updating teacher info: ' + error.message);
         }
     }
 
-    static async addTeacher(teacherData) {
+    static async addTeacher({ name, phone_number, email, department }) {
         try {
-            // Logic for adding a new teacher
+            // Check if the user already exists
+            const existingUser = await findExistingUser(email, phone_number);
+            if (existingUser) {
+                return { message: 'Email or phone number already exists.', user: existingUser };
+            }
+
+            // Fetch the role_id for 'Teacher'
+            const teacherRole = await model.Role.findOne({
+                where: { role_name: 'Teacher' },
+                attributes: ['role_id']
+            });
+
+            // Generate and hash the password
+            const generatedPassword = '123456789'; // Hardcoded password
+            const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+
+            // Create a new user
+            const newUser = await model.User.create({
+                role_id: teacherRole.role_id,
+                name,
+                phone_number,
+                email,
+                password: hashedPassword,
+                refresh_token: null
+            });
+
+            // Create a new teacher with the user's ID
+            const newTeacher = await model.Teacher.create({
+                user_id: newUser.user_id,
+                department
+            });
+
+            // Return the response payload
+            return {
+                teacher_id: newTeacher.teacher_id,
+                department: newTeacher.department,
+                user: {
+                    user_id: newUser.user_id,
+                    name: newUser.name,
+                    phone_number: newUser.phone_number,
+                    email: newUser.email,
+                    password: generatedPassword
+                }
+            };
         } catch (error) {
             throw new Error('Error adding teacher: ' + error.message);
         }
@@ -489,7 +582,36 @@ export default class service {
 
     static async getAllStudents() {
         try {
-            // Logic for fetching all students
+            const students = await model.Student.findAll({
+                include: [
+                    {
+                        model: model.Parent,
+                        as: 'parent_id_Parents', // Check that this alias matches your model setup
+                        attributes: ['parent_id', 'address'],
+                        include: [
+                            {
+                                model: model.User,
+                                as: 'user',
+                                attributes: ['email', 'phone_number'],
+                            }
+                        ]
+                    }
+                ]
+            });
+
+            // Format the response payload
+            return students.map(student => ({
+                student_id: student.student_id,
+                name: student.name,
+                class: student.class,
+                avatar: student.avatar,
+                parents: student.parent_id_Parents.map(parent => ({
+                    parent_id: parent.parent_id,
+                    address: parent.address,
+                    email: parent.user?.email, // Use optional chaining to prevent errors
+                    phone_number: parent.user?.phone_number
+                }))
+            }));
         } catch (error) {
             throw new Error('Error fetching students: ' + error.message);
         }

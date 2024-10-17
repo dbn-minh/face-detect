@@ -32,21 +32,20 @@ router.get('/v1/parents',  AdminController.getAllParents);
 router.post('/v1/parents',  AdminController.addParent);
 router.put('/v1/parents/:user_id',  AdminController.updateParentInfo);
 router.delete('/v1/parents/:user_ids',  AdminController.deleteParent);
-// Handle multiple delete
 
 // Teacher
 router.get('/v1/teachers',  AdminController.getAllTeachers);
-router.get('/v1/teachers/:teacher_id',  AdminController.getTeacherInfo);
-router.put('/v1/teachers/:teacher_id',  AdminController.updateTeacherInfo);
 router.post('/v1/teachers',  AdminController.addTeacher);
+router.put('/v1/teachers/:user_id',  AdminController.updateTeacherInfo);
 router.delete('/v1/teachers/:user_ids',  AdminController.deleteTeacher);
 
 // Student
+router.get('/v1/students',  AdminController.getAllStudents);
+
 router.post('/v1/routes/:bus_id/add-student',  AdminController.addStudentToBus);
 router.get('/v1/student-info/:student_id',  AdminController.getStudentInfo);
 router.put('/v1/student-info/:student_id',  AdminController.updateStudentInfo);
 router.post('/v1/student-info/:student_id',  AdminController.addStudentInfo);
-router.get('/v1/students',  AdminController.getAllStudents);
 router.put('/v1/change-route/:student_id',  AdminController.updateStudentRoute);
 router.delete('/v1/delete-student/:student_id',  AdminController.deleteStudent);
 //handle add and delete multiple students

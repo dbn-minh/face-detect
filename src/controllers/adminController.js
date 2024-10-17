@@ -244,7 +244,7 @@ export default class AdminController {
             // Call service to delete parents and users
             const result = await service.deleteUsersByRole('parent', userIdArray);
 
-            return responseData(res, 'Parents deleted successfully.', result, 200);
+            return responseData(res, 'Success', result, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -253,17 +253,13 @@ export default class AdminController {
     // Teachers
     static async getAllTeachers(req, res) {
         try {
-            const homepage = await service.getAllTeachers();
-            return responseData(res, "Success", homepage, 200);
-        } catch (e) {
-            return responseData(res, "Error", e.message, 500);
-        }
-    }
+            const teachers = await service.getAllTeachers();
 
-    static async getTeacherInfo(req, res) {
-        try {
-            const homepage = await service.getTeacherInfo(req.params.teacher_id);
-            return responseData(res, "Success", homepage, 200);
+            if (!teachers || teachers.length === 0) {
+                return responseData(res, 'No teachers found.', null, 404);
+            }
+
+            return responseData(res, "Success", teachers, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -271,8 +267,21 @@ export default class AdminController {
 
     static async updateTeacherInfo(req, res) {
         try {
-            const homepage = await service.updateTeacherInfo(req.params.teacher_id, req.body);
-            return responseData(res, "Success", homepage, 200);
+            const { user_id } = req.params;
+            const { name, phone_number, email, department } = req.body;
+
+            // Validate the input fields
+            if (!name || !phone_number || !email || !department ) {
+                return responseData(res, 'Invalid input: Please provide all required fields (name, phone_number, email, department).', null, 400);
+            }
+
+            const updateTeacher = await service.updateTeacherInfo(user_id, {name, phone_number, email, department});
+
+            if (updateTeacher.message === 'Email or phone number already exists.') {
+                return responseData(res, 'Conflict', updateTeacher, 409);
+            }
+
+            return responseData(res, "Success", updateTeacher, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -280,8 +289,21 @@ export default class AdminController {
 
     static async addTeacher(req, res) {
         try {
-            const homepage = await service.addTeacher(req.body);
-            return responseData(res, "Success", homepage, 200);
+            const { name, phone_number, email, department } = req.body;
+
+            // Validate input
+            if (!name || !phone_number || !email || !department) {
+                return responseData(res, 'Invalid input: Please provide all required fields (name, phone_number, email, department).', null, 400);
+            }
+
+            // Call the service layer to add the teacher
+            const addTeacher = await service.addTeacher({ name, phone_number, email, department });
+
+            if (addTeacher.message === 'Email or phone number already exists.') {
+                return responseData(res, 'Conflict', addTeacher, 409);
+            }
+
+            return responseData(res, "Success", addTeacher, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -345,8 +367,13 @@ export default class AdminController {
 
     static async getAllStudents(req, res) {
         try {
-            const homepage = await service.getAllStudents();
-            return responseData(res, "Success", homepage, 200);
+            const students = await service.getAllStudents();
+
+            if (!students || students.length === 0) {
+                return responseData(res, 'No students found.', null, 404);
+            }
+
+            return responseData(res, "Success", students, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
