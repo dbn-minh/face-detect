@@ -187,15 +187,6 @@ export default class AdminController {
         }
     }
 
-    // static async getParentInfo(req, res) {
-    //     try {
-    //         const homepage = await service.getParentInfo(req.params.parent_id);
-    //         return responseData(res, "Success", homepage, 200);
-    //     } catch (e) {
-    //         return responseData(res, "Error", e.message, 500);
-    //     }
-    // }
-
     static async updateParentInfo(req, res) {
         try {
             const { user_id } = req.params;

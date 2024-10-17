@@ -25,11 +25,10 @@ router.delete('/v1/routes/:bus_id',  AdminController.deleteBus);
 router.get('/v1/drivers',  AdminController.getAllDrivers);
 router.post('/v1/drivers',  AdminController.addDriver);
 router.put('/v1/drivers/:user_id',  AdminController.updateDriverInfo);
-router.delete('/v1/drivers/:user_ids',  AdminController.deleteDriver); // Delete multiple Drivers
+router.delete('/v1/drivers/:user_ids',  AdminController.deleteDriver);
 
 // Parent
 router.get('/v1/parents',  AdminController.getAllParents);
-// router.get('/v1/parents/:user_id',  AdminController.getParentInfo);
 router.post('/v1/parents',  AdminController.addParent);
 router.put('/v1/parents/:user_id',  AdminController.updateParentInfo);
 router.delete('/v1/parents/:user_ids',  AdminController.deleteParent);
