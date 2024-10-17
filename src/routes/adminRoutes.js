@@ -23,18 +23,16 @@ router.delete('/v1/routes/:bus_id',  AdminController.deleteBus);
 
 // Driver
 router.get('/v1/drivers',  AdminController.getAllDrivers);
-// router.get('/v1/drivers/:driver_id',  AdminController.getDriverInfo);
 router.post('/v1/drivers',  AdminController.addDriver);
-router.put('/v1/drivers/:driver_id',  AdminController.updateDriverInfo);
-router.delete('/v1/drivers/:driver_id',  AdminController.deleteDriver);
-// Handle multiple delete
+router.put('/v1/drivers/:user_id',  AdminController.updateDriverInfo);
+router.delete('/v1/drivers/:user_ids',  AdminController.deleteDriver); // Delete multiple Drivers
 
 // Parent
 router.get('/v1/parents',  AdminController.getAllParents);
-router.get('/v1/parents/:parent_id',  AdminController.getParentInfo);
-router.put('/v1/parents/:parent_id',  AdminController.updateParentInfo);
+// router.get('/v1/parents/:user_id',  AdminController.getParentInfo);
 router.post('/v1/parents',  AdminController.addParent);
-router.delete('/v1/parents/:parent_id',  AdminController.deleteParent);
+router.put('/v1/parents/:user_id',  AdminController.updateParentInfo);
+router.delete('/v1/parents/:user_ids',  AdminController.deleteParent);
 // Handle multiple delete
 
 // Teacher
@@ -42,7 +40,7 @@ router.get('/v1/teachers',  AdminController.getAllTeachers);
 router.get('/v1/teachers/:teacher_id',  AdminController.getTeacherInfo);
 router.put('/v1/teachers/:teacher_id',  AdminController.updateTeacherInfo);
 router.post('/v1/teachers',  AdminController.addTeacher);
-router.delete('/v1/teachers/:teacher_id',  AdminController.deleteTeacher);
+router.delete('/v1/teachers/:user_ids',  AdminController.deleteTeacher);
 
 // Student
 router.post('/v1/routes/:bus_id/add-student',  AdminController.addStudentToBus);

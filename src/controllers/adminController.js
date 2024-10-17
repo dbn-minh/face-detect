@@ -104,19 +104,23 @@ export default class AdminController {
         }
     }
 
-    static async getDriverInfo(req, res) {
-        try {
-            const homepage = await service.getDriverInfo(req.params.driver_id);
-            return responseData(res, "Success", homepage, 200);
-        } catch (e) {
-            return responseData(res, "Error", e.message, 500);
-        }
-    }
-
     static async updateDriverInfo(req, res) {
         try {
-            const homepage = await service.updateDriverInfo(req.params.driver_id, req.body);
-            return responseData(res, "Success", homepage, 200);
+            const { user_id } = req.params;
+            const { name, phone_number, email, license_number } = req.body;
+
+            // Validate the input fields
+            if (!name || !phone_number || !email || !license_number) {
+                return responseData(res, 'Invalid input: Please provide all required fields (name, phone_number, email, license_number)', null, 400);
+            }
+
+            const updateDriver = await service.updateDriverInfo(user_id, { name, phone_number, email, license_number });
+
+            if (updateDriver.message === 'Email or phone number already exists.') {
+                return responseData(res, 'Conflict', updateDriver, 409);
+            }
+
+            return responseData(res, "Success", updateDriver, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -124,17 +128,11 @@ export default class AdminController {
 
     static async addDriver(req, res) {
         try {
-            // Log the entire request body to confirm it's received
-            console.log('Request Body:', req.body);
-
-            // Extract the relevant fields from req.body
             const { name, phone_number, email, license_number } = req.body;
 
             // Validate the request body
             if (!name || !phone_number || !email || !license_number) {
-                throw new Error(
-                    'Invalid input: Please provide all required fields (name, phone_number, email, license_number)'
-                );
+                return responseData(res, 'Invalid input: Please provide all required fields (name, phone_number, email, license_number)', null, 400);
             }
 
             // Call the service layer with extracted data
@@ -145,6 +143,10 @@ export default class AdminController {
                 license_number,
             });
 
+            if (addDriver.message === 'User with the same email or phone number already exists.') {
+                return responseData(res, 'Conflict', addDriver, 409);
+            }
+
             return responseData(res, "Success", addDriver, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
@@ -153,8 +155,18 @@ export default class AdminController {
 
     static async deleteDriver(req, res) {
         try {
-            const homepage = await service.deleteDriver(req.params.driver_id);
-            return responseData(res, "Success", homepage, 200);
+            const { user_ids } = req.params; // Get user_ids from URL parameters
+            const userIdArray = user_ids.split(','); // Convert to array
+
+            // Validate input
+            if (userIdArray.length === 0) {
+                return responseData(res, 'Invalid input: No user IDs provided.', null, 400);
+            }
+
+            // Call service to delete drivers and users
+            const result = await service.deleteUsersByRole('driver', userIdArray);
+
+            return responseData(res, 'Drivers deleted successfully.', result, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -163,26 +175,44 @@ export default class AdminController {
     // Parents
     static async getAllParents(req, res) {
         try {
-            const homepage = await service.getAllParents();
-            return responseData(res, "Success", homepage, 200);
+            const parents = await service.getAllParents();
+
+            if (!parents || parents.length === 0) {
+                return responseData(res, 'No parents found.', null, 404);
+            }
+
+            return responseData(res, "Success", parents, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
     }
 
-    static async getParentInfo(req, res) {
-        try {
-            const homepage = await service.getParentInfo(req.params.parent_id);
-            return responseData(res, "Success", homepage, 200);
-        } catch (e) {
-            return responseData(res, "Error", e.message, 500);
-        }
-    }
+    // static async getParentInfo(req, res) {
+    //     try {
+    //         const homepage = await service.getParentInfo(req.params.parent_id);
+    //         return responseData(res, "Success", homepage, 200);
+    //     } catch (e) {
+    //         return responseData(res, "Error", e.message, 500);
+    //     }
+    // }
 
     static async updateParentInfo(req, res) {
         try {
-            const homepage = await service.updateParentInfo(req.params.parent_id, req.body);
-            return responseData(res, "Success", homepage, 200);
+            const { user_id } = req.params;
+            const { name, phone_number, email, address, relationship } = req.body;
+
+            // Validate the input fields
+            if (!name || !phone_number || !email || !address || !relationship ) {
+                return responseData(res, 'Invalid input: Please provide all required fields (name, phone_number, email, address, relationship, password).', null, 400);
+            }
+
+            const updateParent = await service.updateParentInfo(user_id, { name, phone_number, email, address, relationship });
+
+            if (updateParent.message === 'Email or phone number already exists.') {
+                return responseData(res, 'Conflict', updateParent, 409);
+            }
+
+            return responseData(res, "Success", updateParent, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -190,8 +220,21 @@ export default class AdminController {
 
     static async addParent(req, res) {
         try {
-            const homepage = await service.addParent(req.body);
-            return responseData(res, "Success", homepage, 200);
+            const { name, phone_number, email, address, relationship } = req.body;
+
+            // Validate input
+            if (!name || !phone_number || !email || !address || !relationship ) {
+                return responseData(res, 'Invalid input: Please provide all required fields (name, phone_number, email, address, relationship, password).', null, 400);
+            }
+
+            // Call the service layer to add the parent
+            const addParent = await service.addParent({ name, phone_number, email, address, relationship });
+
+            if (addParent.message === 'Email or phone number already exists.') {
+                return responseData(res, 'Conflict', addParent, 409);
+            }
+
+            return responseData(res, "Success", addParent, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -199,8 +242,18 @@ export default class AdminController {
 
     static async deleteParent(req, res) {
         try {
-            const homepage = await service.deleteParent(req.params.parent_id);
-            return responseData(res, "Success", homepage, 200);
+            const { user_ids } = req.params; // Get user_ids from URL parameters
+            const userIdArray = user_ids.split(','); // Convert to an array
+
+            // Validate input
+            if (userIdArray.length === 0) {
+                return responseData(res, 'Invalid input: No user IDs provided.', null, 400);
+            }
+
+            // Call service to delete parents and users
+            const result = await service.deleteUsersByRole('parent', userIdArray);
+
+            return responseData(res, 'Parents deleted successfully.', result, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -245,8 +298,18 @@ export default class AdminController {
 
     static async deleteTeacher(req, res) {
         try {
-            const homepage = await service.deleteTeacher(req.params.teacher_id);
-            return responseData(res, "Success", homepage, 200);
+            const { user_ids } = req.params; // Get user_ids from URL parameters
+            const userIdArray = user_ids.split(','); // Convert to an array
+
+            // Validate input
+            if (userIdArray.length === 0) {
+                return responseData(res, 'Invalid input: No user IDs provided.', null, 400);
+            }
+
+            // Call service to delete teachers and users
+            const result = await service.deleteUsersByRole('teacher', userIdArray);
+
+            return responseData(res, 'Teachers deleted successfully.', result, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
