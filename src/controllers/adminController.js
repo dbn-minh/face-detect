@@ -358,6 +358,12 @@ export default class AdminController {
 
     static async addStudentInfo(req, res) {
         try {
+            const { name, class: studentClass, avatar } = req.body;
+
+             if (!name || !studentClass || !avatar ) {
+                return responseData(res, 'Invalid input: Please provide all required fields (name, phone_number, email, department).', null, 400);
+            }
+
             const homepage = await service.addStudentInfo(req.params.student_id, req.body);
             return responseData(res, "Success", homepage, 200);
         } catch (e) {

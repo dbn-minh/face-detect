@@ -16,8 +16,8 @@ router.put('/v1/update',  AdminController.updateInfo);
 // Routes - Buses
 router.get('/v1/routes',  AdminController.getAllRoutes);
 router.get('/v1/routes/:bus_id',  AdminController.getBusInfo);
-// Pending: get all Student which are not assign to bus
-router.put('/v1/routes/:bus_id',  AdminController.updateBusInfo); // Pending: Should update bus_id to multiple students
+
+router.put('/v1/routes/:bus_id',  AdminController.updateBusInfo);
 router.post('/v1/routes',  AdminController.addBus);
 router.delete('/v1/routes/:bus_id',  AdminController.deleteBus);
 
@@ -41,11 +41,13 @@ router.delete('/v1/teachers/:user_ids',  AdminController.deleteTeacher);
 
 // Student
 router.get('/v1/students',  AdminController.getAllStudents);
+// router.post('/v1/studnets',  AdminController.addStudentInfo);
 
-router.post('/v1/routes/:bus_id/add-student',  AdminController.addStudentToBus);
+
+router.post('/v1/students',  AdminController.addStudentToBus);
+
 router.get('/v1/student-info/:student_id',  AdminController.getStudentInfo);
 router.put('/v1/student-info/:student_id',  AdminController.updateStudentInfo);
-router.post('/v1/student-info/:student_id',  AdminController.addStudentInfo);
 router.put('/v1/change-route/:student_id',  AdminController.updateStudentRoute);
 router.delete('/v1/delete-student/:student_id',  AdminController.deleteStudent);
 //handle add and delete multiple students

@@ -87,6 +87,26 @@ export default class service {
                             },
                         ],
                     },
+                    {
+                        model: model.Driver,
+                        as: 'driver',
+                        attributes: ['license_number'],
+                        include: [{
+                            model: model.User,
+                            as: 'user',
+                            attributes: ['name', 'phone_number'],
+                        }]
+                    },
+                    {
+                        model: model.Teacher,
+                        as: 'teacher',
+                        // attributes: ['department'],
+                        include: [{
+                            model: model.User,
+                            as: 'user',
+                            attributes: ['name', 'phone_number'],
+                        }]
+                    },
                 ],
             });
 
@@ -96,6 +116,16 @@ export default class service {
                 capacity: busInfo.capacity,
                 license_plate: busInfo.license_plate,
                 status: busInfo.status,
+                driver: {
+                    license_number: busInfo.driver?.license_number || null,
+                    name: busInfo.driver?.user?.name || null,
+                    phone_number: busInfo.driver?.user?.phone_number || null
+                },
+                teacher: {
+                    name: busInfo.teacher?.user?.name || null,
+                    phone_number: busInfo.teacher?.user?.phone_number || null,
+                    department: busInfo.teacher?.department || null,
+                },
                 students: busInfo.Students.map((student) => ({
                     student_id: student.student_id,
                     name: student.name,
@@ -608,7 +638,7 @@ export default class service {
                 parents: student.parent_id_Parents.map(parent => ({
                     parent_id: parent.parent_id,
                     address: parent.address,
-                    email: parent.user?.email, // Use optional chaining to prevent errors
+                    email: parent.user?.email,
                     phone_number: parent.user?.phone_number
                 }))
             }));
