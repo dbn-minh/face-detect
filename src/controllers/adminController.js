@@ -61,16 +61,8 @@ export default class AdminController {
     static async getBusInfo(req, res) {
         try {
             const busInfo = await service.getBusInfo(req.params.bus_id);
-            return responseData(res, "Success", busInfo, 200);
-        } catch (e) {
-            return responseData(res, "Error", e.message, 500);
-        }
-    }
 
-    static async updateBusInfo(req, res) {
-        try {
-            const homepage = await service.updateBusInfo(req.params.bus_id, req.body);
-            return responseData(res, "Success", homepage, 200);
+            return responseData(res, "Success", busInfo, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -78,8 +70,21 @@ export default class AdminController {
 
     static async addBus(req, res) {
         try {
-            const homepage = await service.addBus(req.body);
-            return responseData(res, "Success", homepage, 200);
+            const { capacity, license_plate } = req.body;
+
+            // Validate input
+            if (!capacity || !license_plate) {
+                return responseData(res, 'Invalid input: Please provide capacity and license_plate.', null, 400);
+            }
+
+            const newBus = await service.addBus({capacity, license_plate});
+
+            // Check if the bus already exists
+            if (newBus.message === 'Bus with this license plate already exists.') {
+                return responseData(res, newBus.message, newBus.bus, 409);
+            }
+
+            return responseData(res, "Success", newBus, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -87,8 +92,24 @@ export default class AdminController {
 
     static async deleteBus(req, res) {
         try {
-            const homepage = await service.deleteBus(req.params.bus_id);
-            return responseData(res, "Success", homepage, 200);
+            const { bus_ids } = req.params;
+
+            // Validate the input
+            if (!bus_ids) {
+                return responseData(res, 'Invalid input: No bus IDs provided.', null, 400);
+            }
+
+            // Split the bus_ids into an array
+            const busIdArray = bus_ids.split(',').map(id => parseInt(id.trim()));
+
+            // Call the service layer to delete the buses
+            const result = await service.deleteBuses(busIdArray);
+
+            if (result.deletedBuses === 0) {
+                return responseData(res, 'No buses found with the provided IDs.', null, 404);
+            }
+
+            return responseData(res, 'Buses deleted successfully.', { deletedBuses: result.deletedBuses }, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -329,19 +350,15 @@ export default class AdminController {
     }
 
     // Students
-    static async addStudentToBus(req, res) {
-        try {
-            const homepage = await service.addStudentToBus(req.params.bus_id, req.body);
-            return responseData(res, "Success", homepage, 200);
-        } catch (e) {
-            return responseData(res, "Error", e.message, 500);
-        }
-    }
-
     static async getStudentInfo(req, res) {
         try {
-            const homepage = await service.getStudentInfo(req.params.student_id);
-            return responseData(res, "Success", homepage, 200);
+            const studentInfo = await service.getStudentInfo(req.params.student_id);
+
+            if (!studentInfo) {
+                return responseData(res, 'Student not found.', null, 404);
+
+            }
+            return responseData(res, "Success", studentInfo, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -349,8 +366,22 @@ export default class AdminController {
 
     static async updateStudentInfo(req, res) {
         try {
-            const homepage = await service.updateStudentInfo(req.params.student_id, req.body);
-            return responseData(res, "Success", homepage, 200);
+            const { student_id } = req.params; // Get student_id from URL params
+            const { name, class: studentClass } = req.body; // Extract fields from body
+
+            // Validate input
+            if (!name || !studentClass) {
+                return responseData(res, 'Invalid input: Provide both name and class.', null, 400);
+            }
+
+            // Call service to update student info
+            const updatedStudent = await service.updateStudentInfo(student_id, { name, studentClass });
+
+            if (!updatedStudent) {
+                return responseData(res, 'Student not found.', null, 404);
+            }
+
+            return responseData(res, 'Student updated successfully.', updatedStudent, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -358,14 +389,14 @@ export default class AdminController {
 
     static async addStudentInfo(req, res) {
         try {
-            const { name, class: studentClass, avatar } = req.body;
+            const { name, class: studentClass } = req.body;
 
-             if (!name || !studentClass || !avatar ) {
-                return responseData(res, 'Invalid input: Please provide all required fields (name, phone_number, email, department).', null, 400);
+             if (!name || !studentClass ) {
+                return responseData(res, 'Invalid input: Please provide all required fields (name, class).', null, 400);
             }
 
-            const homepage = await service.addStudentInfo(req.params.student_id, req.body);
-            return responseData(res, "Success", homepage, 200);
+            const newStudent = await service.addStudentInfo({ name, studentClass });
+            return responseData(res, "Success", newStudent, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -396,10 +427,142 @@ export default class AdminController {
 
     static async deleteStudent(req, res) {
         try {
-            const homepage = await service.deleteStudent(req.params.student_id);
-            return responseData(res, "Success", homepage, 200);
+            const { student_ids } = req.params; // Get student_ids from URL params
+            const studentIdArray = student_ids.split(','); // Convert to array
+
+            // Validate input
+            if (studentIdArray.length === 0) {
+                return responseData(res, 'Invalid input: No student IDs provided.', null, 400);
+            }
+
+            // Call service to delete students
+            const result = await service.deleteStudents(studentIdArray);
+
+            if (result.deletedCount === 0) {
+                return responseData(res, 'No students found to delete.', null, 404);
+            }
+
+            return responseData(res, 'Students deleted successfully.', result, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
+        }
+    }
+
+    static async getUnassignedDrivers(req, res) {
+        try {
+            const unassignedDrivers = await service.getUnassignedDrivers();
+
+            if (!unassignedDrivers || unassignedDrivers.length === 0) {
+                return responseData(res, 'No unassigned drivers found.', null, 404);
+            }
+
+            return responseData(res, 'Success', unassignedDrivers, 200);
+        } catch (e) {
+            return responseData(res, 'Error', e.message, 500);
+        }
+    }
+
+    static async getUnassignedTeachers(req, res) {
+        try {
+            const unassignedTeachers = await service.getUnassignedTeachers();
+
+            if (!unassignedTeachers || unassignedTeachers.length === 0) {
+                return responseData(res, 'No unassigned teachers found.', null, 404);
+            }
+
+            return responseData(res, 'Success', unassignedTeachers, 200);
+        } catch (e) {
+            return responseData(res, 'Error', e.message, 500);
+        }
+    }
+
+    static async assignDriverToBus(req, res) {
+        try {
+            const { bus_id, driver_id } = req.params;
+
+            // Call the service layer to assign the driver
+            const result = await service.assignDriverToBus(bus_id, driver_id);
+
+            return responseData(res, 'Driver assigned successfully.', result, 200);
+        } catch (e) {
+            return responseData(res, 'Error', e.message, 500);
+        }
+    }
+
+    static async assignTeacherToBus(req, res) {
+        try {
+            const { bus_id, teacher_id } = req.params;
+
+            // Call the service layer to assign the teacher
+            const result = await service.assignTeacherToBus(bus_id, teacher_id);
+
+            return responseData(res, 'Teacher assigned successfully.', result, 200);
+        } catch (e) {
+            return responseData(res, 'Error', e.message, 500);
+        }
+    }
+    static async getStudentsWithoutParents(req, res) {
+        try {
+            // Call service layer to get unassigned students
+            const students = await service.getStudentsWithoutParents();
+
+            if (!students || students.length === 0) {
+                return responseData(res, 'No students without parents found.', null, 404);
+            }
+
+            return responseData(res, 'Success', students, 200);
+        } catch (e) {
+            return responseData(res, 'Error', e.message, 500);
+        }
+    }
+    static async getStudentsWithoutBus(req, res) {
+        try {
+            const students = await service.getStudentsWithoutBus();
+
+            if (!students || students.length === 0) {
+                return responseData(res, 'No students without a bus found.', null, 404);
+            }
+
+            return responseData(res, 'Success', students, 200);
+        } catch (e) {
+            return responseData(res, 'Error', e.message, 500);
+        }
+    }
+    // Assign students to parents
+    static async assignStudentsToParents(req, res) {
+        try {
+            const { student_ids, parent_id } = req.body;
+
+            // Validate input
+            if (!student_ids || !Array.isArray(student_ids) || student_ids.length === 0 || !parent_id) {
+                return responseData(res, 'Invalid input: Provide valid student IDs and a parent ID.', null, 400);
+            }
+
+            // Call the service to assign students to parents
+            const result = await service.assignStudentsToParents(student_ids, parent_id);
+
+            return responseData(res, 'Students assigned to parent successfully.', result, 200);
+        } catch (e) {
+            return responseData(res, 'Error', e.message, 500);
+        }
+    }
+
+    static async assignStudentsToBus(req, res) {
+        try {
+            const { bus_id } = req.params;
+            const { student_ids } = req.body;
+
+            // Validate input
+            if (!student_ids || !Array.isArray(student_ids) || student_ids.length === 0) {
+                return responseData(res, 'Invalid input: Provide valid student IDs.', null, 400);
+            }
+
+            // Call the service to assign students to the bus
+            const result = await service.assignStudentsToBus(student_ids, bus_id);
+
+            return responseData(res, 'Students assigned to bus successfully.', result, 200);
+        } catch (e) {
+            return responseData(res, 'Error', e.message, 500);
         }
     }
 }

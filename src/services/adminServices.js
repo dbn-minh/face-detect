@@ -1,13 +1,17 @@
 import initModels from "../models/init-models.js";
 import sequelize from "../config/database.js";
 import bcrypt from "bcrypt";
-import {
-  createRefToken,
-  createToken,
-} from "../config/jwt.js";
-import { findExistingUser } from '../utils/userUtils.js';
+import { Op } from 'sequelize';
+// import {
+//   createRefToken,
+//   createToken,
+// } from "../config/jwt.js";
 // import { v4 as uuidv4 } from 'uuid';
+
 let model = initModels(sequelize);
+
+import { findExistingUser } from '../utils/userUtils.js';
+import { getExistingBusByLicensePlate } from '../utils/busUtils.js';
 
 export default class service {
     // Main services
@@ -140,26 +144,48 @@ export default class service {
         }
     }
 
-
-    static async updateBusInfo(bus_id, busData) {
+    static async addBus({ capacity, license_plate }) {
         try {
-            // Logic for updating bus info
-        } catch (error) {
-            throw new Error('Error updating bus info: ' + error.message);
-        }
-    }
+            // Check if the license plate already exists
+            const existingBus = await getExistingBusByLicensePlate(license_plate);
+            if (existingBus) {
+                return {
+                    message: 'Bus with this license plate already exists.',
+                    bus: existingBus
+                };
+            }
 
-    static async addBus(busData) {
-        try {
-            // Logic for adding a new bus
+            // Create a new bus with default values for driver, teacher, location, and status
+            const newBus = await model.Bus.create({
+                capacity,
+                license_plate,
+                driver_id: null,
+                teacher_id: null,
+                current_location: null,
+                status: 'stopped'
+            });
+
+            // Fetch the newly created bus with all its details
+            return await model.Bus.findOne({
+                where: { bus_id: newBus.bus_id },
+            });
+
         } catch (error) {
             throw new Error('Error adding bus: ' + error.message);
         }
     }
 
-    static async deleteBus(bus_id) {
+    static async deleteBuses(busIdArray) {
         try {
-            // Logic for deleting a bus by ID
+            // Delete the buses with the given IDs
+            const deletedBuses = await model.Bus.destroy({
+                where: {
+                    bus_id: busIdArray
+                }
+            });
+
+            // Return the number of deleted buses
+            return { deletedBuses };
         } catch (error) {
             throw new Error('Error deleting bus: ' + error.message);
         }
@@ -194,10 +220,13 @@ export default class service {
 
     static async updateDriverInfo(user_id, { name, phone_number, email, license_number }) {
         try {
-            // Check if the user already exists
-            const existingUser = await findExistingUser(email, phone_number);
-            if (existingUser) {
-                return existingUser;
+            // Check if the license plate already exists
+            const existingBus = await getExistingBusByLicensePlate(license_plate);
+            if (existingBus) {
+                return {
+                    message: 'Bus with this license plate already exists.',
+                    bus: existingBus
+                };
             }
 
             // Find the driver along with the associated user
@@ -578,33 +607,79 @@ export default class service {
     }
 
     // Students
-    static async addStudentToBus(bus_id, studentData) {
-        try {
-            // Logic for adding a student to a bus
-        } catch (error) {
-            throw new Error('Error adding student to bus: ' + error.message);
-        }
-    }
-
     static async getStudentInfo(student_id) {
         try {
-            // Logic for fetching student info by ID
+            // Fetch student info along with parents and their associated users
+            const student = await model.Student.findOne({
+                where: { student_id },
+                attributes: ['student_id', 'name', 'class', 'avatar', 'bus_id'],
+                include: [
+                    {
+                        model: model.Parent,
+                        as: 'parent_id_Parents', // Ensure this alias matches your model setup
+                        attributes: ['parent_id', 'address', 'relationship'],
+                        include: [
+                            {
+                                model: model.User,
+                                as: 'user',
+                                attributes: ['name', 'phone_number', 'email']
+                            }
+                        ]
+                    }
+                ]
+            });
+            // Format the response payload
+            return {
+                student_id: student.student_id,
+                name: student.name,
+                class: student.class,
+                avatar: student.avatar,
+                bus_id: student.bus_id,
+                parents: student.parent_id_Parents.map(parent => ({
+                    parent_id: parent.parent_id,
+                    name: parent.user.name,
+                    address: parent.address,
+                    phone_number: parent.user.phone_number,
+                    email: parent.user.email,
+                    relationship: parent.relationship,
+                }))
+            };
+
         } catch (error) {
             throw new Error('Error fetching student info: ' + error.message);
         }
     }
 
-    static async updateStudentInfo(student_id, studentData) {
+    static async updateStudentInfo(student_id, { name, studentClass }) {
         try {
-            // Logic for updating student info
+            const student = await model.Student.findOne({ where: { student_id } });
+
+            // Update the student with the new values
+            student.name = name;
+            student.class = studentClass;
+            await student.save(); // Save the updated student
+
+            // Return the updated student info
+            return {
+                student_id: student.student_id,
+                name: student.name,
+                class: student.class
+            };
         } catch (error) {
             throw new Error('Error updating student info: ' + error.message);
         }
     }
 
-    static async addStudentInfo(student_id, studentData) {
+    //should handle the same student_id when using uuid instead of auto increment
+    static async addStudentInfo({ name, studentClass }) {
         try {
-            // Logic for adding student info
+            return await model.Student.create({
+                name,
+                class: studentClass,
+                bus_id: null,
+                avatar: null,
+                feature_vector: null
+            });
         } catch (error) {
             throw new Error('Error adding student info: ' + error.message);
         }
@@ -655,11 +730,184 @@ export default class service {
         }
     }
 
-    static async deleteStudent(student_id) {
+    static async deleteStudents(studentIdArray) {
         try {
-            // Logic for deleting a student by ID
+            await model.Student_Parent.destroy({
+                where: {
+                    student_id: studentIdArray
+                }
+            });
+
+            const deletedCount = await model.Student.destroy({
+                where: {
+                    student_id: studentIdArray
+                }
+            });
+
+            return { deletedCount };
         } catch (error) {
-            throw new Error('Error deleting student: ' + error.message);
+            throw new Error('Error deleting students: ' + error.message);
+        }
+    }
+
+    static async getUnassignedDrivers() {
+        try {
+            // Find all drivers who don't have a bus assigned
+            const unassignedDrivers = await model.Driver.findAll({
+                where: {
+                    '$Bus.bus_id$': { [Op.is]: null } // Check if the driver has no assigned bus
+                },
+                include: [
+                    {
+                        model: model.Bus,
+                        as: 'Bus', // Ensure the alias matches your association
+                        attributes: [] // We don't need bus attributes in the result
+                    },
+                    {
+                        model: model.User,
+                        as: 'user',
+                        attributes: ['name', 'phone_number', 'email']
+                    }
+                ]
+            });
+
+            // Format the response payload
+            return unassignedDrivers.map(driver => ({
+                driver_id: driver.driver_id,
+                name: driver.user.name,
+                license_number: driver.license_number,
+                phone_number: driver.user.phone_number,
+                email: driver.user.email
+            }));
+        } catch (error) {
+            throw new Error('Error fetching unassigned drivers: ' + error.message);
+        }
+    }
+
+    static async getUnassignedTeachers() {
+        try {
+            // Find all teachers who don't have a bus assigned
+            const unassignedTeachers = await model.Teacher.findAll({
+                where: {
+                    '$Bus.bus_id$': { [Op.is]: null } // Check if the teacher has no assigned bus
+                },
+                include: [
+                    {
+                        model: model.Bus,
+                        as: 'Bus', // Ensure the alias matches your association
+                        attributes: [] // We don't need bus attributes in the result
+                    },
+                    {
+                        model: model.User,
+                        as: 'user',
+                        attributes: ['name', 'phone_number', 'email']
+                    }
+                ]
+            });
+
+            // Format the response payload
+            return unassignedTeachers.map(teacher => ({
+                teacher_id: teacher.teacher_id,
+                name: teacher.user.name,
+                department: teacher.department,
+                phone_number: teacher.user.phone_number,
+                email: teacher.user.email
+            }));
+        } catch (error) {
+            throw new Error('Error fetching unassigned teachers: ' + error.message);
+        }
+    }
+
+    static async assignDriverToBus(bus_id, driver_id) {
+        try {
+            // Update the bus with the new driver_id
+            await model.Bus.update(
+                { driver_id },
+                { where: { bus_id } }
+            );
+
+            return await model.Bus.findOne({ where: { bus_id } });
+        } catch (error) {
+            throw new Error('Error assigning driver: ' + error.message);
+        }
+    }
+
+    static async assignTeacherToBus(bus_id, teacher_id) {
+        try {
+            // Update the bus with the new teacher_id
+            await model.Bus.update(
+                { teacher_id },
+                { where: { bus_id } }
+            );
+
+            return await model.Bus.findOne({ where: { bus_id } });
+        } catch (error) {
+            throw new Error('Error assigning teacher: ' + error.message);
+        }
+    }
+    static async getStudentsWithoutParents() {
+        try {
+            // Query to find students who are not in the Student_Parent table
+            return await model.Student.findAll({
+                include: {
+                    model: model.Student_Parent,
+                    as: 'Student_Parents', // Ensure this alias matches your association
+                    required: false, // Left outer join to include students without parents
+                },
+                where: {
+                    '$Student_Parents.parent_id$': { [Op.is]: null } // Filter students without parents
+                },
+                attributes: ['student_id', 'name', 'class', 'bus_id', 'avatar']
+            });
+
+        } catch (error) {
+            throw new Error('Error fetching unassigned students: ' + error.message);
+        }
+    }
+
+    static async getStudentsWithoutBus() {
+        try {
+            return await model.Student.findAll({
+                where: {
+                    bus_id: { [Op.is]: null } // Students with no bus assigned
+                },
+                attributes: ['student_id', 'name', 'class', 'avatar']
+            });
+
+        } catch (error) {
+            throw new Error('Error fetching students without a bus: ' + error.message);
+        }
+    }
+    static async assignStudentsToParents(student_ids, parent_id) {
+        try {
+            const assignments = student_ids.map(student_id => ({
+                student_id,
+                parent_id
+            }));
+
+            await model.Student_Parent.bulkCreate(assignments, { ignoreDuplicates: true });
+
+            return { assignedStudents: student_ids, parent_id };
+        } catch (error) {
+            throw new Error('Error assigning students to parent: ' + error.message);
+        }
+    }
+
+    // Assign students to a bus (PATCH)
+    static async assignStudentsToBus(student_ids, bus_id) {
+        try {
+            await model.Student.update(
+                { bus_id },
+                {
+                    where: {
+                        student_id: student_ids
+                    }
+                }
+            );
+
+            return { assignedStudents: student_ids, bus_id };
+        } catch (error) {
+            throw new Error('Error assigning students to bus: ' + error.message);
         }
     }
 }
