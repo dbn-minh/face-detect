@@ -4,9 +4,9 @@ import upload from "../config/multer.js";
 
 const router = express.Router();
 
-router.get('/details/:driver_id', DriverController.getDriverDetails);
-router.get('/setting/:driver_id', DriverController.getDriverSetting);
-router.post('/feedback/:driver_id', DriverController.writeFeedback);
+router.get('/v1/details/:driver_id', DriverController.getDriverDetails);
+router.get('/v1/setting/:driver_id', DriverController.getDriverSetting);
+router.post('/v1/feedback/:driver_id', DriverController.writeFeedback);
 
 // router.put('/change-password/:driver_id', DriverController.updateDriverProfile);
 // router.put('/avatar/:driver_id', upload.single('avatar'), DriverController.uploadAvatar);
