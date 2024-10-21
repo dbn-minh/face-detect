@@ -30,10 +30,10 @@ export default class AdminController {
         }
     }
 
-    static async getReport(req, res) {
+    static async getFeedbacks(req, res) {
         try {
-            const homepage = await service.getReport();
-            return responseData(res, "Success", homepage, 200);
+            const feedback = await service.getFeedbacks();
+            return responseData(res, "Success", feedback, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }

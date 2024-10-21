@@ -4,7 +4,7 @@ const { Model, Sequelize } = _sequelize;
 export default class Feedback extends Model {
   static init(sequelize, DataTypes) {
   return super.init({
-    parent_id: {
+    feedback_id: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -36,7 +36,7 @@ export default class Feedback extends Model {
         unique: true,
         using: "BTREE",
         fields: [
-          { name: "parent_id" },
+          { name: "feedback_id" },
         ]
       },
       {

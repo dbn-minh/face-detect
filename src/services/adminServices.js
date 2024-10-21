@@ -39,9 +39,28 @@ export default class service {
         }
     }
 
-    static async getReport() {
+    static async getFeedbacks() {
         try {
-            // Logic for fetching report data
+            // Fetch feedback entries with associated user information
+            const feedbacks = await model.Feedback.findAll({
+                include: [
+                    {
+                        model: model.User,
+                        as: 'user', // Ensure alias matches your model setup
+                        attributes: ['name', 'email', 'phone_number']
+                    }
+                ]
+            });
+
+            // Format the response for each feedback entry
+            return feedbacks.map(feedback => ({
+                feedback_id: feedback.feedback_id,
+                title: feedback.title,
+                name: feedback.user.name,
+                email: feedback.user.email,
+                phone_number: feedback.user.phone_number,
+                content: feedback.content,
+            }));
         } catch (error) {
             throw new Error('Error fetching report: ' + error.message);
         }
