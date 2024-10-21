@@ -3,14 +3,15 @@ import * as service from "../services/authServices.js";
 
 export default class AuthController {
   static async signup(req, res) {
-    const { role_id, name, phone_number, email, password, other } = req.body;
+    const { role_id, name, phone_number, email, password, other, relationship} = req.body;
     const { error, data, status } = await service.signupService(
       role_id,
       name,
       phone_number,
       email,
       password,
-      other
+      other,
+      relationship
     );
 
     if (error) {

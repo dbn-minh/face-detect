@@ -1,5 +1,13 @@
 import express from 'express';
 import ParentController from '../controllers/ParentController.js';
+import {
+    checkRefToken,
+    checkToken,
+    createRefToken,
+    createToken,
+    decodeToken,
+    verifyToken,
+  } from "../config/jwt.js";
 const router = express.Router();
 import upload from '../config/multer.js';
 
@@ -11,6 +19,7 @@ router.get('/v1/notification/:parent_id', ParentController.getNotifications);
 router.get('/v1/setting/:parent_id', ParentController.getParentSetting);
 router.put('/v1/setting/:parent_id', ParentController.updateParentSetting);
 router.post('/v1/feedback/:parent_id', ParentController.writeFeedback);
+
 
 // pending
 router.put('/avatar/:parent_id', upload.single('avatar'), ParentController.uploadStudentAvatar);
