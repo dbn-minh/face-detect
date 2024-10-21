@@ -31,9 +31,12 @@ export default class service {
         }
     }
 
-    static async getSetting() {
+    static async getSetting(user_id) {
         try {
-            // Logic for fetching setting data
+            return await model.User.findOne({
+                where: { user_id: user_id },
+                attributes: ['user_id', 'name', 'phone_number', 'email'],
+            })
         } catch (error) {
             throw new Error('Error fetching settings: ' + error.message);
         }
@@ -41,34 +44,104 @@ export default class service {
 
     static async getFeedbacks() {
         try {
-            // Fetch feedback entries with associated user information
-            const feedbacks = await model.Feedback.findAll({
+            const { fn, col, literal } = sequelize;
+
+            // Step 1: Fetch total users grouped by role
+            const totalUsers = await model.User.findAll({
+                attributes: [
+                    'role_id',
+                    [fn('COUNT', col('User.user_id')), 'user_count']
+                ],
+                group: ['role_id'],
+                include: [
+                    {
+                        model: model.Role,
+                        as: 'role',
+                        attributes: ['role_name']
+                    }
+                ],
+                raw: true, // Return plain objects
+                nest: true // Maintain nested structure
+            });
+
+            // Step 2: Fetch users with feedback and their roles
+            const feedbackCounts = await model.Feedback.findAll({
+                attributes: [
+                    [col('user.role_id'), 'role_id'],
+                    [fn('COUNT', col('Feedback.user_id')), 'feedback_count']
+                ],
+                group: ['user.role_id'],
                 include: [
                     {
                         model: model.User,
-                        as: 'user', // Ensure alias matches your model setup
-                        attributes: ['name', 'email', 'phone_number']
+                        as: 'user',
+                        attributes: [], // No need to return user attributes
+                        include: [
+                            {
+                                model: model.Role,
+                                as: 'role',
+                                attributes: ['role_name']
+                            }
+                        ]
                     }
-                ]
+                ],
+                raw: true, // Return plain objects
+                nest: true // Maintain nested structure
             });
 
-            // Format the response for each feedback entry
-            return feedbacks.map(feedback => ({
-                feedback_id: feedback.feedback_id,
-                title: feedback.title,
-                name: feedback.user.name,
-                email: feedback.user.email,
-                phone_number: feedback.user.phone_number,
-                content: feedback.content,
-            }));
+            // Step 3: Calculate participation percentage for each role
+            return totalUsers.map((roleData) => {
+                const roleName = roleData.role.role_name;
+                const totalUserCount = roleData.user_count;
+
+                const feedbackData = feedbackCounts.find(
+                    (feedback) => feedback.role_id === roleData.role_id
+                );
+
+                const feedbackCount = feedbackData ? feedbackData.feedback_count : 0;
+
+                const participationPercentage =
+                    totalUserCount > 0
+                        ? ((feedbackCount / totalUserCount) * 100).toFixed(2)
+                        : '0.00';
+
+                return {
+                    role: roleName,
+                    totalUsers: totalUserCount,
+                    usersWithFeedback: feedbackCount,
+                    participationPercentage: `${participationPercentage}%`
+                };
+            });
+
         } catch (error) {
             throw new Error('Error fetching report: ' + error.message);
         }
     }
 
-    static async updateInfo(info) {
+    static async updateInfo(user_id, {name, phone_number, email}) {
         try {
-            // Logic for updating info
+            // Find the user by ID
+            const user = await model.User.findOne({ where: { user_id } });
+
+            if (!user) {
+                return null; // Return null if user is not found
+            }
+
+            // Update user information
+            user.name = name;
+            user.phone_number = phone_number;
+            user.email = email;
+
+            // Save changes
+            await user.save();
+
+            // Return updated user information
+            return {
+                user_id: user.user_id,
+                name: user.name,
+                phone_number: user.phone_number,
+                email: user.email,
+            };
         } catch (error) {
             throw new Error('Error updating info: ' + error.message);
         }

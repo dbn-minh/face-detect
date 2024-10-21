@@ -23,8 +23,8 @@ export default class AdminController {
 
     static async getSetting(req, res) {
         try {
-            const homepage = await service.getSetting();
-            return responseData(res, "Success", homepage, 200);
+            const setting = await service.getSetting(req.params.user_id);
+            return responseData(res, "Success", setting, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -41,8 +41,14 @@ export default class AdminController {
 
     static async updateInfo(req, res) {
         try {
-            const homepage = await service.updateInfo(req.body);
-            return responseData(res, "Success", homepage, 200);
+            const { name, phone_number, email } = req.body;
+            const updateInfo = await service.updateInfo(req.params.user_id, {name, phone_number, email});
+
+            if (!updateInfo) {
+                return responseData(res, "User not found.", null, 404); // Handle case when user is not found
+            }
+
+            return responseData(res, "User info updated successfully.", updateInfo, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
