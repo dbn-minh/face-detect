@@ -9,7 +9,6 @@ const router = express.Router();
 router.get('/v1/notifications', AdminController.getNotifications);
 router.get('/v1/dashboard',  AdminController.getDashboard);
 router.get('/v1/setting',  AdminController.getSetting);
-router.get('/v1/report',  AdminController.getReport);
 router.put('/v1/update',  AdminController.updateInfo);
 // router.put('/change-password',  AdminController.updatePassword);
 
@@ -54,7 +53,7 @@ router.get('/v1/students/:student_id',  AdminController.getStudentInfo);
 router.put('/v1/students/:student_id',  AdminController.updateStudentInfo);
 router.delete('/v1/students/:student_ids',  AdminController.deleteStudent);
 
-router.put('/v1/change-route/:student_id',  AdminController.updateStudentRoute);
+// router.put('/v1/change-route/:student_id',  AdminController.updateStudentRoute);
 //handle add and delete multiple students
 // router.put('/v1/upload/:student_id',  AdminController.uploadAvatar);
 

@@ -30,15 +30,6 @@ export default class AdminController {
         }
     }
 
-    static async getReport(req, res) {
-        try {
-            const homepage = await service.getReport();
-            return responseData(res, "Success", homepage, 200);
-        } catch (e) {
-            return responseData(res, "Error", e.message, 500);
-        }
-    }
-
     static async updateInfo(req, res) {
         try {
             const homepage = await service.updateInfo(req.body);

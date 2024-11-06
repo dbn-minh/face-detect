@@ -3,6 +3,20 @@ import * as service from '../services/parentServices.js';
 import {uploadAvatarToOneDrive} from "../services/studentService.js";
 
 export default class ParentController {
+    static constructStudentResponse = (students, notifications) => {
+        return students.map(student => {
+            const studentNotifications = notifications[student.student_id] || {};
+
+            return {
+                ...student,
+                notifications: {
+                    alert_messages: studentNotifications.alert_messages || [],
+                    bus_breakdown_info: studentNotifications.bus_breakdown_info || null,
+                    general_notifications: studentNotifications.general_notifications || []
+                }
+            };
+        });
+    };
     static async getParentHome(req, res) {
       const parent_id = req.params.parent_id;
 
@@ -15,20 +29,12 @@ export default class ParentController {
           return responseData(res, 'Fail', 'No students found for this parent', 404);
         }
 
-          // Lấy thông tin current_location cho từng học sinh thông qua driver_id
-          const studentsWithDetails = await Promise.all(
-              students.map(async (student) => {
-                  let updatedStudent = { ...student };
+        const notifications = await service.getNotificationsByParentId(parent_id);
 
-                  const notifications = await service.getNotificationsByParentId(parent_id);
-                  return {
-                      ...updatedStudent,
-                      notifications: notifications || [],
-                  };
-              })
-          );
+        // Construct the response using the helper function
+        const response = ParentController.constructStudentResponse(students, notifications);
 
-        return responseData(res, 'Success', studentsWithDetails, 200);
+        return responseData(res, 'Success', response, 200);
 
       } catch (error) {
         return responseData(res, 'Fail', error.message, 500);

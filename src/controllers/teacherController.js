@@ -15,6 +15,19 @@ export default class TeacherController {
         }
     }
 
+    static async getNotifications(req, res) {
+        try {
+            const teacher_id  = req.params.teacher_id;
+
+            // Fetch students and their parent information
+            const homepage = await service.getNotificationsByTeacherId(teacher_id);
+
+            return responseData(res, "Success", homepage, 200);
+        } catch (e) {
+            return responseData(res, "Error", e.message, 500);
+        }
+    }
+
     static async getStudentsInformation(req, res) {
         try {
             const teacher_id  = req.params.teacher_id;

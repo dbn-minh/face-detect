@@ -1,6 +1,5 @@
 import initModels from "../models/init-models.js";
 import sequelize from "../config/database.js";
-import {Op} from "sequelize";
 let model = initModels(sequelize);
 
 // Phần này nên đưa vào websocket làm realtime, sẽ fetch được những thông báo mới
@@ -46,8 +45,8 @@ export const getNotificationsByStudentIdService = async (student_id) => {
         }
 
         return {
-            notifications,
-            alertMessages: alertMessages.length > 0 ? alertMessages : null
+            alertMessages: alertMessages.length > 0 ? alertMessages : null,
+            notifications
         };
     } catch (error) {
         throw new Error('Error fetching notifications: ' + error.message);
@@ -104,11 +103,10 @@ export const getDetailsOfTeacher = async (teacher_id) => {
         }
 
         return {
-            error: null,
             data: {
                 driver: driver,
-                notifications: notifications,
-                alertMessages: alertMessages.length > 0 ? alertMessages : null
+                alertMessages: alertMessages.length > 0 ? alertMessages : null,
+                notifications: notifications
             }
         };
 
@@ -209,10 +207,6 @@ export const getSettingOfTeacher = async (teacher_id) => {
             ]
         });
 
-        if (!bus) {
-            throw new Error('No bus found for this teacher.');
-        }
-
         // Prepare the setting response
         return {
             bus_id: bus.bus_id,
@@ -244,10 +238,6 @@ export const updateProfileOfTeacher = async (teacher_id, updatedData) => {
                 }
             ]
         });
-
-        if (!teacher) {
-            throw new Error('Teacher not found.');
-        }
 
         // Update the teacher's department
         teacher.department = department || teacher.department;  // Update only if provided
@@ -288,6 +278,14 @@ export const writeFeedback = async (teacher_id, title, content) => {
             title,
             content,
         });
+
+    } catch (error) {
+        throw new Error('Error writing feedback: ' + error.message);
+    }
+};
+
+export const getNotificationsByTeacherId = async (teacher_id, title, content) => {
+    try {
 
     } catch (error) {
         throw new Error('Error writing feedback: ' + error.message);
