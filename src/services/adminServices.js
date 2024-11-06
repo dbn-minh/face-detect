@@ -154,17 +154,42 @@ export default class service {
         }
     }
 
-    static async getSetting() {
+    static async getSetting(user_id) {
         try {
-            // Logic for fetching setting data
+            return await model.User.findOne({
+                where: { user_id: user_id },
+                attributes: ['user_id', 'name', 'phone_number', 'email'],
+            })
         } catch (error) {
             throw new Error('Error fetching settings: ' + error.message);
         }
     }
 
+
     static async updateInfo(info) {
         try {
-            // Logic for updating info
+            // Find the user by ID
+            const user = await model.User.findOne({ where: { user_id } });
+
+            if (!user) {
+                return null; // Return null if user is not found
+            }
+
+            // Update user information
+            user.name = name;
+            user.phone_number = phone_number;
+            user.email = email;
+
+            // Save changes
+            await user.save();
+
+            // Return updated user information
+            return {
+                user_id: user.user_id,
+                name: user.name,
+                phone_number: user.phone_number,
+                email: user.email,
+            };
         } catch (error) {
             throw new Error('Error updating info: ' + error.message);
         }

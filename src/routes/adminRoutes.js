@@ -10,6 +10,7 @@ router.get('/v1/notifications', AdminController.getNotifications);
 router.get('/v1/dashboard',  AdminController.getDashboard);
 router.get('/v1/setting',  AdminController.getSetting);
 router.put('/v1/update',  AdminController.updateInfo);
+
 // router.put('/change-password',  AdminController.updatePassword);
 
 // Routes - Buses
