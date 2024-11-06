@@ -38,4 +38,20 @@ export default class DriverController {
             return responseData(res, 'Fail', error.message, 500);
         }
     }
+    static async reportBrokenBus(req, res) {
+        const { driver_id } = req.params;
+        const action = req.body.action;
+
+        try {
+            const result = await service.reportBrokenBus(driver_id, action);
+
+            // Check if the result contains an error message
+            if (result.error) {
+                return responseData(res, result.error, result.bus, 400); // 400 for client error
+            }
+            return responseData(res, "Broken bus reported successfully", result, 201);
+        } catch (error) {
+            return responseData(res, "Error reporting broken bus", error.message, 500);
+        }
+    }
 }

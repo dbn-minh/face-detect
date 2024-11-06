@@ -5,7 +5,7 @@ const router = express.Router();
 
 //Pending to use websocket
 router.get('/v1/homepage/:teacher_id', TeacherController.getHomepage); // remember to filter the status
-// router.get('/notification/:teacher_id', TeacherController.getTeacherProfile);
+router.get('/v1/notification/:teacher_id', TeacherController.getNotifications);
 
 // pending Upload to Drive
 // router.put('/broken-photo/:teacher_id', TeacherController.getNotifications);

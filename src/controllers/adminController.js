@@ -30,15 +30,6 @@ export default class AdminController {
         }
     }
 
-    static async getFeedbacks(req, res) {
-        try {
-            const feedback = await service.getFeedbacks();
-            return responseData(res, "Success", feedback, 200);
-        } catch (e) {
-            return responseData(res, "Error", e.message, 500);
-        }
-    }
-
     static async updateInfo(req, res) {
         try {
             const { name, phone_number, email } = req.body;

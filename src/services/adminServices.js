@@ -17,7 +17,130 @@ export default class service {
     // Main services
     static async getNotifications() {
         try {
-            // Logic for fetching notifications
+            // Fetch all notifications with status "alert"
+            const alertNotifications = await model.Notification.findAll({
+                where: { status: 'alert' },
+                attributes: ['notification_id', 'time_stamp', 'message', 'image', 'status'],
+                include: [
+                    {
+                        model: model.Attendance,
+                        as: 'attendance',
+                        attributes: ['attendance_id'],
+                        include: [
+                            {
+                                model: model.Student,
+                                as: 'student',
+                                attributes: ['student_id', 'name', 'class', 'avatar'],
+                                include: [
+                                    {
+                                        model: model.Parent,
+                                        as: 'parent_id_Parents',
+                                        attributes: ['parent_id', 'address'],
+                                        include: [
+                                            {
+                                                model: model.User,
+                                                as: 'user',
+                                                attributes: ['user_id', 'name', 'phone_number', 'email'],
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            });
+
+            // Fetch all buses with status "broken"
+            const brokenBuses = await model.Bus.findAll({
+                where: { status: 'broken' },
+                attributes: ['bus_id', 'license_plate', 'current_location']
+            });
+
+            // Count ongoing buses and total buses
+            const ongoingBusCount = await model.Bus.count({ where: { status: 'ongoing' } });
+            const totalBusCount = await model.Bus.count();
+
+            // Count students with "absent" status in attendance
+            const absentStudentCount = await model.Attendance.count({ where: { status: 'absent' } });
+
+            const unsolvedFeedback = await model.Feedback.findAll({
+                where: { status: 'unsolved' },
+                attributes: ['feedback_id', 'title', 'content', 'user_id'],
+                include: [
+                    {
+                        model: model.User,
+                        as: 'user',
+                        attributes: ['user_id', 'name', 'email', 'phone_number']
+                    }
+                ]
+            });
+
+            // Map through the notifications to structure the response
+            const notifications = alertNotifications.map(notification => {
+                const student = notification.attendance?.student;
+                const parent = student?.parent_id_Parents?.[0];
+
+                return {
+                    notification_id: notification.notification_id,
+                    time_stamp: notification.time_stamp,
+                    message: notification.message,
+                    image: notification.image || null,
+                    status: notification.status,
+                    student: student
+                        ? {
+                            student_id: student.student_id,
+                            name: student.name,
+                            class: student.class,
+                            avatar: student.avatar,
+                            parent: parent
+                                ? {
+                                    parent_id: parent.parent_id,
+                                    address: parent.address,
+                                    user: parent.user
+                                        ? {
+                                            user_id: parent.user.user_id,
+                                            name: parent.user.name,
+                                            phone_number: parent.user.phone_number,
+                                            email: parent.user.email
+                                        }
+                                        : null
+                                }
+                                : null
+                        }
+                        : null
+                };
+            });
+
+            // Map the broken buses information for the response
+            const brokenBusesInfo = brokenBuses.map(bus => ({
+                bus_id: bus.bus_id,
+                license_plate: bus.license_plate,
+                current_location: bus.current_location
+            }));
+
+            const unsolvedFeedbackList = unsolvedFeedback.map(feedback => ({
+                feedback_id: feedback.feedback_id,
+                title: feedback.title,
+                content: feedback.content,
+                user: feedback.user
+                    ? {
+                        user_id: feedback.user.user_id,
+                        name: feedback.user.name,
+                        email: feedback.user.email,
+                        phone_number: feedback.user.phone_number
+                    }
+                    : null
+            }));
+
+            // Structure the final response
+            return {
+                alert_notifications: notifications,
+                broken_buses: brokenBusesInfo,
+                bus_status_summary: `${ongoingBusCount}/${totalBusCount} buses ongoing`,
+                absent_students_count: absentStudentCount,
+                unsolved_feedback: unsolvedFeedbackList
+            };
         } catch (error) {
             throw new Error('Error fetching notifications: ' + error.message);
         }
@@ -42,83 +165,8 @@ export default class service {
         }
     }
 
-    static async getFeedbacks() {
-        try {
-            const { fn, col, literal } = sequelize;
 
-            // Step 1: Fetch total users grouped by role
-            const totalUsers = await model.User.findAll({
-                attributes: [
-                    'role_id',
-                    [fn('COUNT', col('User.user_id')), 'user_count']
-                ],
-                group: ['role_id'],
-                include: [
-                    {
-                        model: model.Role,
-                        as: 'role',
-                        attributes: ['role_name']
-                    }
-                ],
-                raw: true, // Return plain objects
-                nest: true // Maintain nested structure
-            });
-
-            // Step 2: Fetch users with feedback and their roles
-            const feedbackCounts = await model.Feedback.findAll({
-                attributes: [
-                    [col('user.role_id'), 'role_id'],
-                    [fn('COUNT', col('Feedback.user_id')), 'feedback_count']
-                ],
-                group: ['user.role_id'],
-                include: [
-                    {
-                        model: model.User,
-                        as: 'user',
-                        attributes: [], // No need to return user attributes
-                        include: [
-                            {
-                                model: model.Role,
-                                as: 'role',
-                                attributes: ['role_name']
-                            }
-                        ]
-                    }
-                ],
-                raw: true, // Return plain objects
-                nest: true // Maintain nested structure
-            });
-
-            // Step 3: Calculate participation percentage for each role
-            return totalUsers.map((roleData) => {
-                const roleName = roleData.role.role_name;
-                const totalUserCount = roleData.user_count;
-
-                const feedbackData = feedbackCounts.find(
-                    (feedback) => feedback.role_id === roleData.role_id
-                );
-
-                const feedbackCount = feedbackData ? feedbackData.feedback_count : 0;
-
-                const participationPercentage =
-                    totalUserCount > 0
-                        ? ((feedbackCount / totalUserCount) * 100).toFixed(2)
-                        : '0.00';
-
-                return {
-                    role: roleName,
-                    totalUsers: totalUserCount,
-                    usersWithFeedback: feedbackCount,
-                    participationPercentage: `${participationPercentage}%`
-                };
-            });
-
-        } catch (error) {
-            throw new Error('Error fetching report: ' + error.message);
-        }
-    }
-
-    static async updateInfo(user_id, {name, phone_number, email}) {
+    static async updateInfo(info) {
         try {
             // Find the user by ID
             const user = await model.User.findOne({ where: { user_id } });
