@@ -30,29 +30,54 @@ export const signupService = async (role_id, name, phone_number, email, password
       password: hashedPassword,
     });
 
+    let roleDetails = null;
+
     switch (role_id) {
       case 1: // Parent
-        await model.Parent.create({
+        const parent = await model.Parent.create({
           address: other,
           relationship: relationship,
           user_id: newUser.user_id,
         });
+        roleDetails = {
+          role: "Parent",
+          address: parent.address,
+          relationship: parent.relationship
+        };
         break;
       case 2: // Driver
-        await model.Driver.create({
+        const driver = await model.Driver.create({
           license_number: other,
           user_id: newUser.user_id,
         });
+        roleDetails = {
+          role: "Driver",
+          license_number: driver.license_number
+        };
         break;
       case 3: // Teacher
-        await model.Teacher.create({
+        const teacher = await model.Teacher.create({
           department: other,
           user_id: newUser.user_id,
         });
+        roleDetails = {
+          role: "Teacher",
+          department: teacher.department
+        };
         break;
     }
 
-    return { data: newUser, status: 200 };
+    return {
+      data: {
+        user_id: newUser.user_id,
+        role_id: newUser.role_id,
+        name: newUser.name,
+        phone_number: newUser.phone_number,
+        email: newUser.email,
+        role_details: roleDetails
+      },
+      status: 200
+    };
   } catch (error) {
     console.error(error);
     return { error: "Error creating user", status: 500 };
@@ -91,12 +116,17 @@ export const logoutService = async (token) => {
   try {
     let access_token = decodeToken(token);
 
+    // Check if the token was decoded succe                     ssfully
+    if (!access_token || !access_token.data || !access_token.data.user_id) {
+      return { error: "Invalid token or missing user data in token", status: 400 };
+    }
+
     let get_user = await model.User.findOne({
       where: { user_id: access_token.data.user_id },
     });
 
     await model.User.update(
-      { refresh_token: "" },
+      { refresh_token: null },
       {
         where: { user_id: get_user.user_id },
       }
