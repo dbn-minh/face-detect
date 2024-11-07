@@ -156,23 +156,59 @@ export default class service {
 
     static async getSetting(user_id) {
         try {
-            return await model.User.findOne({
+            const user = await model.User.findOne({
                 where: { user_id: user_id },
-                attributes: ['user_id', 'name', 'phone_number', 'email'],
-            })
+                attributes: ['user_id', 'name', 'phone_number', 'email', 'role_id'],
+                include: [
+                    {
+                        model: model.Role,
+                        as: 'role',
+                        attributes: ["role_name"]
+                    }
+                ]
+            });
+            // Check if the user exists and verify their role
+            if (!user || user.role.role_name !== 'Admin') {
+                return { error: "Unauthorized access" };
+            }
+
+            return {
+                user_id: user.user_id,
+                name: user.name,
+                phone_number: user.phone_number,
+                email: user.email
+            };
         } catch (error) {
             throw new Error('Error fetching settings: ' + error.message);
         }
     }
 
 
-    static async updateInfo(info) {
+    static async updateInfo(user_id, {name, phone_number, email}) {
         try {
             // Find the user by ID
-            const user = await model.User.findOne({ where: { user_id } });
+            const user = await model.User.findOne({
+                where: { user_id } ,
+                include: [
+                    {
+                        model: model.Role,
+                        as: 'role',
+                        attributes: ['role_name']
+                    }
+                ]
+            });
 
-            if (!user) {
-                return null; // Return null if user is not found
+            // Check if the user exists and verify their role
+            if (!user || user.role.role_name !== 'Admin') {
+                return { error: "Unauthorized access" };
+            }
+
+            if (
+                user.name === name &&
+                user.phone_number === phone_number &&
+                user.email === email
+            ) {
+                return { error: "No changes detected. Update failed." };
             }
 
             // Update user information
@@ -862,9 +898,24 @@ export default class service {
         }
     }
 
-    static async updateStudentRoute(student_id, routeData) {
+    static async updateStudentRoute(student_id, {bus_id}) {
         try {
-            // Logic for updating a student's route
+            const student = await model.Student.findOne({ where: { student_id } });
+
+            if (student.bus_id === bus_id) {
+                return { error: "The new bus_id is the same as the current bus. No update performed." };
+            }
+
+            // Update the bus_id in the student record
+            student.bus_id = bus_id;
+            await student.save();
+
+            return {
+                student_id: student.student_id,
+                name: student.name,
+                class: student.class,
+                bus_id: student.bus_id
+            };
         } catch (error) {
             throw new Error('Error updating student route: ' + error.message);
         }
