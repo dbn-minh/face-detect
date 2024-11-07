@@ -23,8 +23,13 @@ export default class AdminController {
 
     static async getSetting(req, res) {
         try {
-            const homepage = await service.getSetting();
-            return responseData(res, "Success", homepage, 200);
+            const setting = await service.getSetting(req.params.user_id);
+            // Check if there was an error returned from the service
+            if (setting.error) {
+                return responseData(res, "Error", setting.error, 403);
+            }
+
+            return responseData(res, "Success", setting, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -32,8 +37,15 @@ export default class AdminController {
 
     static async updateInfo(req, res) {
         try {
-            const homepage = await service.updateInfo(req.body);
-            return responseData(res, "Success", homepage, 200);
+            const { name, phone_number, email } = req.body;
+            const updateInfo = await service.updateInfo(req.params.user_id, {name, phone_number, email});
+
+            if (updateInfo.error) {
+                return responseData(res, "Error", updateInfo.error, 403);
+            }
+
+
+            return responseData(res, "User info updated successfully.", updateInfo, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }
@@ -409,8 +421,12 @@ export default class AdminController {
 
     static async updateStudentRoute(req, res) {
         try {
-            const homepage = await service.updateStudentRoute(req.params.student_id, req.body);
-            return responseData(res, "Success", homepage, 200);
+            const data = await service.updateStudentRoute(req.params.student_id, req.body);
+
+            if (data.length === 0) {
+                return responseData(res, 'No students found.', null, 404);
+            }
+            return responseData(res, "Success", data, 200);
         } catch (e) {
             return responseData(res, "Error", e.message, 500);
         }

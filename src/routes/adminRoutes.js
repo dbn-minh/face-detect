@@ -8,8 +8,8 @@ const router = express.Router();
 // main
 router.get('/v1/notifications', AdminController.getNotifications);
 router.get('/v1/dashboard',  AdminController.getDashboard);
-router.get('/v1/setting',  AdminController.getSetting);
-router.put('/v1/update',  AdminController.updateInfo);
+router.get('/v1/setting/:user_id',  AdminController.getSetting);
+router.put('/v1/update/:user_id',  AdminController.updateInfo);
 // router.put('/change-password',  AdminController.updatePassword);
 
 // Routes - Buses
@@ -52,9 +52,9 @@ router.post('/v1/students',  AdminController.addStudentInfo);
 router.get('/v1/students/:student_id',  AdminController.getStudentInfo);
 router.put('/v1/students/:student_id',  AdminController.updateStudentInfo);
 router.delete('/v1/students/:student_ids',  AdminController.deleteStudent);
+router.put('/v1/change-route/:student_id',  AdminController.updateStudentRoute);
 
-// router.put('/v1/change-route/:student_id',  AdminController.updateStudentRoute);
-//handle add and delete multiple students
+//handle add and delete multiple students - done
 // router.put('/v1/upload/:student_id',  AdminController.uploadAvatar);
 
 
