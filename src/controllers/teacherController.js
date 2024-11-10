@@ -1,5 +1,6 @@
 import {responseData} from "../config/response.js";
 import * as service from '../services/teacherServices.js';
+import {getValidStudentAttendances} from "../services/teacherServices.js";
 
 export default class TeacherController {
     static async getHomepage(req, res) {
@@ -86,6 +87,17 @@ export default class TeacherController {
         }
     }
 
+    static async getStudentsForDropdown(req, res) {
+        const { teacher_id } = req.params;
+
+        try {
+            const students = await service.getValidStudentAttendances(teacher_id);
+            return responseData(res, 'Fetched students successfully', students, 200);
+        } catch (error) {
+            return responseData(res, error.message, null, 500);
+        }
+    }
+
     //Pending: chỉnh lại ở phần table notifications và attendance
     static async uploadBrokenPhotos(req, res) {
         const { teacher_id } = req.params;
@@ -94,16 +106,15 @@ export default class TeacherController {
         const filePath = `uploads/notifications/${fileName}`;
 
         try {
-            // Tạo thông báo broken photo mới
             const newNotification = await service.createBrokenPhotoNotification(attendance_id, filePath, status);
-
-            // Cập nhật trạng thái attendance
-            await service.updateAttendanceStatus(attendance_id, status);
-
+            const result = await service.updateAttendanceStatus(attendance_id, status);
+                if (!result.success) {
+                    return responseData(res, result.message, null, 400);  // Trả về lỗi khi status không hợp lệ
+                }
             // Trả về thành công
             return responseData(res, 'Broken photo uploaded and attendance updated successfully', newNotification, 200);
         } catch (error) {
-            // Trả về lỗi
+            console.log('Error in uploadBrokenPhotos:', error.message);
             return responseData(res, error.message, null, 500);
         }
     }

@@ -319,45 +319,92 @@ export const writeFeedback = async (teacher_id, title, content) => {
 
 export const updateAttendanceStatus = async (attendance_id, status) => {
     const time_stamp = new Date();
+    // Kiểm tra xem status có hợp lệ không
+    if (status !== 'boarded' && status !== 'alighted') {
+        return { success: false, message: `Invalid status: ${status}. Accepted values are 'boarded' or 'alighted'.` };
+    }
+
     try {
+        // Nếu status là 'boarded', cập nhật thời gian boarded và xóa dữ liệu cũ của alighted
         if (status === 'boarded') {
+            // Đặt thời gian boarded, xóa alighted và cập nhật status thành boarded
             await model.Attendance.update(
-                { boarded: time_stamp, status: 'boarded' },
+                { boarded: time_stamp, alighted: null, status: 'boarded' },
                 { where: { attendance_id } }
             );
+
+            // Xóa thông báo cũ trong bảng Notification liên quan đến trạng thái 'alighted'
+            // await model.Notification.destroy({
+            //     where: { attendance_id, message: { [model.Sequelize.Op.like]: '%alighted%' } }
+            // });
         } else if (status === 'alighted') {
             await model.Attendance.update(
                 { alighted: time_stamp, status: 'alighted' },
                 { where: { attendance_id } }
             );
         }
+        return { success: true, message: 'Attendance status updated successfully.' };
     } catch (error) {
         throw new Error('Error updating attendance status: ' + error.message);
     }
 };
 
+export const getValidStudentAttendances = async (teacher_id) => {
+    try {
+        // Lấy bus_id từ teacher_id và tìm journey đang hoạt động
+        const busRecord = await model.Bus.findOne({
+            where: { teacher_id },
+            attributes: ['bus_id'],
+            include: [
+                {
+                    model: model.Journey,
+                    as: 'Journeys',
+                    where: { status: 'ongoing' },
+                    attributes: ['journey_id']
+                }
+            ]
+        });
+
+        const journey_id = busRecord.Journeys[0].journey_id;
+
+        // Lấy danh sách học sinh thuộc journey đang hoạt động
+        const students = await model.Attendance.findAll({
+            where: { journey_id },
+            attributes: ['attendance_id'],
+            include: [
+                {
+                    model: model.Student,
+                    as: 'student',
+                    attributes: ['student_id', 'name']
+                }
+            ]
+        });
+
+        // Trả về danh sách hợp lệ của học sinh với attendance_id và tên
+        return students.map(student => ({
+            attendance_id: student.attendance_id,
+            student_id: student.student.student_id,
+            name: student.student.name
+        }));
+    } catch (error) {
+        throw new Error('Error fetching students by teacher ID: ' + error.message);
+    }
+};
+
 export const createBrokenPhotoNotification = async (attendance_id, filePath, status) => {
     try {
-        // Tìm attendance record và lấy student_id
         const attendanceRecord = await model.Attendance.findOne({
             where: { attendance_id },
             include: [
                 {
                     model: model.Student,
-                    as: 'student',  // Đảm bảo alias khớp với mối quan hệ trong init-models.js
+                    as: 'student',
                     attributes: ['name']
                 }
             ]
         });
 
-        if (!attendanceRecord) {
-            throw new Error('Attendance record not found');
-        }
-
-        // Lấy tên học sinh từ attendance record
         const studentName = attendanceRecord.student.name;
-
-        // Tạo thông báo với tên học sinh
         const message = `${studentName} has ${status === 'boarded' ? 'boarded' : 'alighted'} from the bus`;
 
         // Tạo bản ghi Notification mới
@@ -366,7 +413,7 @@ export const createBrokenPhotoNotification = async (attendance_id, filePath, sta
             time_stamp: new Date(),
             message,
             image: filePath,
-            status: 'alert'
+            status: 'common'
         });
 
     } catch (error) {

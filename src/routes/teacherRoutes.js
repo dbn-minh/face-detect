@@ -13,8 +13,9 @@ router.put('/v1/setting/:teacher_id', TeacherController.updateProfile);
 router.post('/v1/feedback/:teacher_id', TeacherController.writeFeedback);
 
 // pending Upload to Drive
+router.get('/v1/students-for-dropdown/:teacher_id', TeacherController.getStudentsForDropdown);
 const notificationUpload = createMulterMiddleware('uploads/notifications');
-// router.put('/v1/broken-photo/:teacher_id', notificationUpload.single('photo'), TeacherController.uploadBrokenPhotos);
+router.put('/v1/broken-photo/:teacher_id', notificationUpload.single('photo'), TeacherController.uploadBrokenPhotos);
 // router.put('/emergency-photo/:teacher_id', TeacherController.getBusTracking); // store in noti, set alight as common
 //change password
 
