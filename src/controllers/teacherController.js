@@ -85,5 +85,27 @@ export default class TeacherController {
             return responseData(res, 'Fail', error.message, 500);
         }
     }
+
+    //Pending: chỉnh lại ở phần table notifications và attendance
+    static async uploadBrokenPhotos(req, res) {
+        const { teacher_id } = req.params;
+        const { attendance_id, status } = req.body;
+        const fileName = req.file.filename;
+        const filePath = `uploads/notifications/${fileName}`;
+
+        try {
+            // Tạo thông báo broken photo mới
+            const newNotification = await service.createBrokenPhotoNotification(attendance_id, filePath, status);
+
+            // Cập nhật trạng thái attendance
+            await service.updateAttendanceStatus(attendance_id, status);
+
+            // Trả về thành công
+            return responseData(res, 'Broken photo uploaded and attendance updated successfully', newNotification, 200);
+        } catch (error) {
+            // Trả về lỗi
+            return responseData(res, error.message, null, 500);
+        }
+    }
 }
 

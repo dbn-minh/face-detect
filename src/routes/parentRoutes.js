@@ -9,7 +9,7 @@ import {
     verifyToken,
   } from "../config/jwt.js";
 const router = express.Router();
-import upload from '../config/multer.js';
+import createMulterMiddleware from "../config/multer.js";
 
 
 router.get('/v1/home/:parent_id', ParentController.getParentHome);
@@ -22,9 +22,9 @@ router.post('/v1/feedback/:parent_id', ParentController.writeFeedback);
 
 
 // pending
-router.put('/avatar/:parent_id', upload.single('avatar'), ParentController.uploadStudentAvatar);
+const avatarUpload = createMulterMiddleware('uploads/avatars');
+
+router.put('/v1/avatar/:parent_id', avatarUpload.single('avatar'), ParentController.uploadStudentAvatar);
 // router.put('change-pass/:parent_id', AuthController.updatePassword);
-// Call emergency endpoint
-// view alighted photo after emergency
 
 export default router;

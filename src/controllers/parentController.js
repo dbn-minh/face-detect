@@ -1,6 +1,6 @@
 import {responseData} from "../config/response.js";
 import * as service from '../services/parentServices.js';
-import {uploadAvatarToOneDrive} from "../services/studentService.js";
+import {saveAvatarPathToDatabase} from "../services/studentService.js";
 
 export default class ParentController {
     static constructStudentResponse = (students, notifications) => {
@@ -120,27 +120,21 @@ export default class ParentController {
     }
 
     // Controller to upload avatar to OneDrive and update DB
-    static async uploadStudentAvatar(req, res){
-        const parent_id = req.params.parent_id;  // Get student ID from URL params
-        const filePath = req.file.path;  // Temporary path where file is stored
-        const originalFileName = req.file.originalname;  // Get original file name
-
-        // Generate a unique file name using student ID and timestamp
-        const timestamp = Date.now();
-        const extension = originalFileName.split('.').pop();  // Get file extension
-        const fileName = `avatars/${parent_id}-${timestamp}.${extension}`;
-
+    static async uploadStudentAvatar(req, res) {
+        const parent_id = req.params.parent_id;
+        const fileName  = req.file.filename;  // File path trên server (để lưu vào database)
+        const filePath = `uploads/avatars/${fileName}`;
+        // try re-name the file to studentName + id
         try {
-            // Upload the avatar to OneDrive
-            const result = await uploadAvatarToOneDrive(parent_id, filePath, fileName);
+            const result = await saveAvatarPathToDatabase(parent_id, fileName);
 
-            // Respond with the success message and avatar URL
-            return res.status(200).json({ message: 'Success', data: result });
+            return responseData(res, 'Avatar uploaded successfully', { result, filePath: filePath }, 200);
         } catch (error) {
-            // Handle any errors that occur
-            return res.status(500).json({ message: 'Error', error: error.message });
+            // Xử lý lỗi bằng responseData
+            return responseData(res, 'Error uploading avatar', error.message, 500);
         }
     }
+
     static async writeFeedback(req, res){
         const { parent_id } = req.params;
         const { title, content } = req.body;

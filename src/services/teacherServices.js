@@ -115,6 +115,39 @@ export const getDetailsOfTeacher = async (teacher_id) => {
     }
 };
 
+export const getNotificationsByTeacherId = async (teacher_id) => {
+    try {
+        const bus = await model.Bus.findOne({
+            where: {teacher_id},
+            attributes: ['bus_id'],
+        })
+         const students = await model.Student.findAll({
+            where: { bus_id: bus.bus_id }
+        });
+
+        const notifications = [];
+        const alertMessages = [];
+
+        for (const student of students) {
+            const { notifications: studentNotifications, alertMessages: studentAlerts } = await getNotificationsByStudentIdService(student.student_id);
+
+            notifications.push(...studentNotifications);
+            if (studentAlerts) {
+                alertMessages.push(...studentAlerts);
+            }
+        }
+        return {
+            data: {
+                alertMessages: alertMessages.length > 0 ? alertMessages : null,
+                notifications: notifications
+            }
+        };
+    } catch (error) {
+        throw new Error('Error writing feedback: ' + error.message);
+    }
+};
+
+
 export const getStudentsInfo = async (teacher_id) => {
     try {
         // Lấy thông tin bus của teacher_id chỉ có 1 journey ongoing
@@ -284,13 +317,64 @@ export const writeFeedback = async (teacher_id, title, content) => {
     }
 };
 
-export const getNotificationsByTeacherId = async (teacher_id, title, content) => {
+export const updateAttendanceStatus = async (attendance_id, status) => {
+    const time_stamp = new Date();
     try {
-
+        if (status === 'boarded') {
+            await model.Attendance.update(
+                { boarded: time_stamp, status: 'boarded' },
+                { where: { attendance_id } }
+            );
+        } else if (status === 'alighted') {
+            await model.Attendance.update(
+                { alighted: time_stamp, status: 'alighted' },
+                { where: { attendance_id } }
+            );
+        }
     } catch (error) {
-        throw new Error('Error writing feedback: ' + error.message);
+        throw new Error('Error updating attendance status: ' + error.message);
     }
 };
+
+export const createBrokenPhotoNotification = async (attendance_id, filePath, status) => {
+    try {
+        // Tìm attendance record và lấy student_id
+        const attendanceRecord = await model.Attendance.findOne({
+            where: { attendance_id },
+            include: [
+                {
+                    model: model.Student,
+                    as: 'student',  // Đảm bảo alias khớp với mối quan hệ trong init-models.js
+                    attributes: ['name']
+                }
+            ]
+        });
+
+        if (!attendanceRecord) {
+            throw new Error('Attendance record not found');
+        }
+
+        // Lấy tên học sinh từ attendance record
+        const studentName = attendanceRecord.student.name;
+
+        // Tạo thông báo với tên học sinh
+        const message = `${studentName} has ${status === 'boarded' ? 'boarded' : 'alighted'} from the bus`;
+
+        // Tạo bản ghi Notification mới
+        return await model.Notification.create({
+            attendance_id,
+            time_stamp: new Date(),
+            message,
+            image: filePath,
+            status: 'alert'
+        });
+
+    } catch (error) {
+        throw new Error('Error creating broken photo notification: ' + error.message);
+    }
+};
+
+
 
 
 
