@@ -154,12 +154,12 @@ export default class TeacherController {
     static async uploadEmergencyPhoto(req, res) {
         const { teacher_id } = req.params;
         const { attendance_id } = req.body;
-        const fileName = req.file.filename;
-        const filePath = `uploads/notifications/${fileName}`;  // Đường dẫn lưu hình ảnh khẩn cấp
+        const fileName = `${Date.now()}-${req.file.originalname}`; // Đường dẫn lưu hình ảnh khẩn cấp
 
         try {
+            const fileUrl = await uploadToAzure(req.file.buffer, fileName);
             // Tạo thông báo khẩn cấp mới
-            const emergencyNotification = await service.createEmergencyNotification(teacher_id, attendance_id, filePath);
+            const emergencyNotification = await service.createEmergencyNotification(teacher_id, attendance_id, fileUrl);
 
             if (!emergencyNotification.success) {
                 return responseData(res, emergencyNotification.message, null, 400);  // Trả về lỗi nếu không thành công

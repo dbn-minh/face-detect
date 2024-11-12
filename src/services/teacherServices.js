@@ -433,7 +433,8 @@ export const createBrokenPhotoNotification = async (teacher_id, attendance_id, f
     }
 };
 
-export const createEmergencyNotification = async (teacher_id, attendance_id, filePath) => {
+// Vẫn còn lỗi ở đây nhé
+export const createEmergencyNotification = async (teacher_id, attendance_id, fileUrl) => {
     try {
         const validStudents = await getValidStudentAttendances(teacher_id);
 
@@ -451,7 +452,7 @@ export const createEmergencyNotification = async (teacher_id, attendance_id, fil
             attendance_id,
             time_stamp: new Date(),
             message,
-            image: filePath,
+            image: fileUrl,
             status: 'alert'
         });
 
