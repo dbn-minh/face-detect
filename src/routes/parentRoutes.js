@@ -22,9 +22,9 @@ router.post('/v1/feedback/:parent_id', ParentController.writeFeedback);
 
 
 // pending
-const avatarUpload = createMulterMiddleware('uploads/avatars');
-
-router.put('/v1/avatar/:parent_id', avatarUpload.single('avatar'), ParentController.uploadStudentAvatar);
+// const avatarUpload = createMulterMiddleware('uploads/avatars');
+//
+// router.put('/v1/avatar/:parent_id', avatarUpload.single('avatar'), ParentController.uploadStudentAvatar);
 // router.put('change-pass/:parent_id', AuthController.updatePassword);
 
 export default router;

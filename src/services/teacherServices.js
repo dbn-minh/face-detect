@@ -1,6 +1,7 @@
 import initModels from "../models/init-models.js";
 import sequelize from "../config/database.js";
 let model = initModels(sequelize);
+import { Op } from 'sequelize';
 
 // Phần này nên đưa vào websocket làm realtime, sẽ fetch được những thông báo mới
 export const getNotificationsByStudentIdService = async (student_id) => {
@@ -333,10 +334,6 @@ export const updateAttendanceStatus = async (attendance_id, status) => {
                 { where: { attendance_id } }
             );
 
-            // Xóa thông báo cũ trong bảng Notification liên quan đến trạng thái 'alighted'
-            // await model.Notification.destroy({
-            //     where: { attendance_id, message: { [model.Sequelize.Op.like]: '%alighted%' } }
-            // });
         } else if (status === 'alighted') {
             await model.Attendance.update(
                 { alighted: time_stamp, status: 'alighted' },
@@ -391,24 +388,37 @@ export const getValidStudentAttendances = async (teacher_id) => {
     }
 };
 
-export const createBrokenPhotoNotification = async (attendance_id, filePath, status) => {
+export const createBrokenPhotoNotification = async (teacher_id, attendance_id, filePath, status) => {
     try {
-        const attendanceRecord = await model.Attendance.findOne({
-            where: { attendance_id },
-            include: [
-                {
-                    model: model.Student,
-                    as: 'student',
-                    attributes: ['name']
-                }
-            ]
-        });
+        // Lấy danh sách học sinh hợp lệ từ `teacher_id`
+        const validStudents = await getValidStudentAttendances(teacher_id);
 
-        const studentName = attendanceRecord.student.name;
+        // Kiểm tra nếu `attendance_id` nằm trong danh sách hợp lệ
+        const isValidAttendance = validStudents.some(student => student.attendance_id === parseInt(attendance_id, 10));
+
+        if (!isValidAttendance) {
+            return { success: false, message: 'Invalid attendance ID for this teacher and journey.' };
+        }
+
+        // Xóa thông báo cũ nếu `status` là 'boarded'
+        if (status === 'boarded') {
+            await model.Notification.destroy({
+                where: {
+                    attendance_id,
+                    [Op.or]: [
+                        { message: { [Op.like]: '%alighted%' } },
+                        { message: { [Op.like]: '%boarded%' } }
+                    ]
+                }
+            });
+        }
+
+        // Lấy tên học sinh từ danh sách hợp lệ
+        const studentName = validStudents.find(student => student.attendance_id === parseInt(attendance_id, 10)).name;
         const message = `${studentName} has ${status === 'boarded' ? 'boarded' : 'alighted'} from the bus`;
 
         // Tạo bản ghi Notification mới
-        return await model.Notification.create({
+        const newNotification = await model.Notification.create({
             attendance_id,
             time_stamp: new Date(),
             message,
@@ -416,10 +426,42 @@ export const createBrokenPhotoNotification = async (attendance_id, filePath, sta
             status: 'common'
         });
 
+        return { success: true, data: newNotification };
+
     } catch (error) {
         throw new Error('Error creating broken photo notification: ' + error.message);
     }
 };
+
+export const createEmergencyNotification = async (teacher_id, attendance_id, filePath) => {
+    try {
+        const validStudents = await getValidStudentAttendances(teacher_id);
+
+        const isValidAttendance = validStudents.some(student => student.attendance_id === parseInt(attendance_id, 10));
+
+        if (!isValidAttendance) {
+            return { success: false, message: 'Invalid attendance ID for this teacher and journey.' };
+        }
+
+        const studentName = validStudents.find(student => student.attendance_id === parseInt(attendance_id, 10)).name;
+        const message = `Emergency alert: ${studentName} is in need of urgent assistance`;
+
+        // Tạo bản ghi Notification mới với status là 'alert'
+        const newNotification = await model.Notification.create({
+            attendance_id,
+            time_stamp: new Date(),
+            message,
+            image: filePath,
+            status: 'alert'
+        });
+
+        return { success: true, data: newNotification };
+
+    } catch (error) {
+        throw new Error('Error creating emergency alert notification: ' + error.message);
+    }
+};
+
 
 
 

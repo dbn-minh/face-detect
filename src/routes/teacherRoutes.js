@@ -1,6 +1,7 @@
 import express from 'express';
 import TeacherController from '../controllers/teacherController.js';
 import createMulterMiddleware from "../config/multer.js";
+import notificationUpload from "../config/multer.js";
 
 const router = express.Router();
 
@@ -14,9 +15,9 @@ router.post('/v1/feedback/:teacher_id', TeacherController.writeFeedback);
 
 // pending Upload to Drive
 router.get('/v1/students-for-dropdown/:teacher_id', TeacherController.getStudentsForDropdown);
-const notificationUpload = createMulterMiddleware('uploads/notifications');
+// const notificationUpload = createMulterMiddleware('uploads/notifications');
 router.put('/v1/broken-photo/:teacher_id', notificationUpload.single('photo'), TeacherController.uploadBrokenPhotos);
-// router.put('/emergency-photo/:teacher_id', TeacherController.getBusTracking); // store in noti, set alight as common
+router.put('/v1/emergency-photo/:teacher_id', notificationUpload.single('photo'), TeacherController.uploadEmergencyPhoto);
 //change password
 
 export default router;
