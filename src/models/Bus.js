@@ -41,7 +41,7 @@ export default class Bus extends Model {
       allowNull: true
     },
     status: {
-      type: DataTypes.ENUM('ongoing','stopped'),
+      type: DataTypes.ENUM('ongoing','stopped','broken'),
       allowNull: true
     }
   }, {

@@ -4,7 +4,7 @@ const { Model, Sequelize } = _sequelize;
 export default class Feedback extends Model {
   static init(sequelize, DataTypes) {
   return super.init({
-    parent_id: {
+    feedback_id: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -25,6 +25,16 @@ export default class Feedback extends Model {
     content: {
       type: DataTypes.STRING(255),
       allowNull: false
+    },
+    status: {
+      type: DataTypes.ENUM('unsolved','solved'),
+      allowNull: false,
+      defaultValue: "unsolved"
+    },
+    time_stamp: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: Sequelize.Sequelize.literal('CURRENT_TIMESTAMP')
     }
   }, {
     sequelize,
@@ -36,7 +46,7 @@ export default class Feedback extends Model {
         unique: true,
         using: "BTREE",
         fields: [
-          { name: "parent_id" },
+          { name: "feedback_id" },
         ]
       },
       {
