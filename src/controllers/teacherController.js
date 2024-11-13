@@ -98,46 +98,40 @@ export default class TeacherController {
         }
     }
 
-    // nếu set boarded thì xoá luôn phần thông báo cũ -> chưa xoá được trên cloud nên hãy tìm hiểu phần này
     static async uploadBrokenPhotos(req, res) {
         const { teacher_id } = req.params;
         const { attendance_id, status } = req.body;
         const file = req.file;
 
         try {
-            // Lấy thông tin hiện tại của Notification để xác định file ảnh cũ
-            const currentNotification = await service.getNotificationByAttendanceId(attendance_id);
-            if (currentNotification && currentNotification.image) {
-                const oldFileName = decodeURIComponent(currentNotification.image.split('/').pop().split('?')[0]); // Lấy tên file từ URL
-                const oldStatus = oldFileName.includes('status=boarded') ? 'boarded' : 'alighted'; // Lấy `status` từ tên file
-                // Kiểm tra xem `status` của file cũ có trùng với `status` của yêu cầu hiện tại không
-                if (oldStatus === status) {
-                    console.log(`Attempting to delete old file: ${oldFileName} from Azure with status ${status}`);
-                    await deleteFromAzure(oldFileName, 'notifications');
-                } else {
-                    console.log(`Skipping delete for ${oldFileName} as it has a different status (${oldStatus}) than the current status (${status})`);
-                }
+            const validStudents = await service.getValidStudentAttendances(teacher_id);
+
+            const isValidAttendance = validStudents.some(student => student.attendance_id === parseInt(attendance_id, 10));
+            if (!isValidAttendance) {
+                return responseData(res, 'Invalid attendance ID for this teacher and journey.', null, 400);
             }
 
+            // Define file URL
             const projectCode = 'STUDENT_TRACKING';
             const entityType = 'notification';
             const fileName = `${projectCode}-${entityType}-teacherId=${teacher_id}-attendanceId=${attendance_id}-status=${status}-${Date.now()}-${file.originalname}`;
 
-            // Tải ảnh lên Azure Blob Storage và lấy URL
             const fileUrl = await uploadToAzure(req.file.buffer, fileName);
 
-            // Tạo thông báo với URL từ Azure
-            const newNotification = await service.createBrokenPhotoNotification(teacher_id, attendance_id, fileUrl, status);
+            const newNotification = await service.createBrokenPhotoNotification(teacher_id, attendance_id, fileUrl, status, validStudents);
+            // Handle error, delete picture uploaded
             if (!newNotification.success) {
-                return responseData(res, newNotification.message, null, 400);  // Trả về lỗi khi status không hợp lệ
+                await deleteFromAzure(fileName, 'notifications');
+                return responseData(res, newNotification.message, null, 400);
             }
 
             const result = await service.updateAttendanceStatus(attendance_id, status);
+            // Handle error, delete picture uploaded
             if (!result.success) {
-                return responseData(res, result.message, null, 400);  // Trả về lỗi khi status không hợp lệ
+                await deleteFromAzure(fileName, 'notifications');
+                return responseData(res, result.message, null, 400);
             }
 
-            // Trả về thông báo thành công với URL của ảnh
             return responseData(res, 'Broken photo uploaded and attendance updated successfully', newNotification.data, 200);
         } catch (error) {
             return responseData(res, error.message, null, 500);
