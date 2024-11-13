@@ -2,20 +2,18 @@ import { BlobServiceClient } from "@azure/storage-blob";
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Chỉ cần sử dụng mỗi connection string là đủ rồi
 const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
-const AZURE_STORAGE_SAS_TOKEN = process.env.AZURE_STORAGE_SAS_TOKEN;
 
 if (!AZURE_STORAGE_CONNECTION_STRING) {
     throw new Error("Azure Storage connection string is not set");
 }
 
+// Khởi tạo BlobServiceClient từ connection string đã có SAS token
 const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
 
+// Hàm upload cho 'notifications' container
 export const uploadToAzure = async (fileBuffer, fileName, containerName = 'notifications') => {
-    if (!AZURE_STORAGE_CONNECTION_STRING) {
-        throw new Error("Azure Storage connection string is not set");
-    }
-
     const containerClient = blobServiceClient.getContainerClient(containerName);
 
     await containerClient.createIfNotExists({ access: "container" });
@@ -27,13 +25,14 @@ export const uploadToAzure = async (fileBuffer, fileName, containerName = 'notif
         blobHTTPHeaders: { blobContentType: "image/jpeg" }
     });
 
-    return `${blockBlobClient.url}?${AZURE_STORAGE_SAS_TOKEN}`;
+    // Trả về URL của blob mà không cần thêm SAS token
+    return blockBlobClient.url;
 };
 
+// Hàm upload cho 'avatars' container
 export const uploadAvatarToAzure = async (fileBuffer, fileName) => {
     const containerClient = blobServiceClient.getContainerClient('avatars');
 
-    // Tạo container 'avatars' nếu chưa tồn tại
     await containerClient.createIfNotExists({ access: "container" });
 
     const blockBlobClient = containerClient.getBlockBlobClient(fileName);
@@ -43,5 +42,22 @@ export const uploadAvatarToAzure = async (fileBuffer, fileName) => {
         blobHTTPHeaders: { blobContentType: "image/jpeg" }
     });
 
-    return `${blockBlobClient.url}?${AZURE_STORAGE_SAS_TOKEN}`;
+    // Trả về URL của blob mà không cần thêm SAS token
+    return blockBlobClient.url;
+};
+
+export const deleteFromAzure = async (fileName, containerName = 'avatars') => {
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blockBlobClient = containerClient.getBlockBlobClient(fileName);
+
+    try {
+        const deleteResponse = await blockBlobClient.deleteIfExists();
+        if (deleteResponse.succeeded) {
+            console.log(`File ${fileName} successfully deleted from Azure.`);
+        } else {
+            console.log(`File ${fileName} not found or could not be deleted.`);
+        }
+    } catch (error) {
+        console.error(`Failed to delete file ${fileName} from Azure: ${error.message}`);
+    }
 };

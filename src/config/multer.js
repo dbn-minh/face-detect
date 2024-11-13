@@ -1,6 +1,6 @@
 import multer from 'multer';
 
-const notificationUpload = multer({
+const photoUpload = multer({
     storage: multer.memoryStorage(),  // Sử dụng memoryStorage để lưu ảnh vào bộ nhớ tạm thời
     limits: { fileSize: 5 * 1024 * 1024 },  // Giới hạn kích thước file là 5MB
     fileFilter: (req, file, cb) => {
@@ -16,7 +16,7 @@ const notificationUpload = multer({
     }
 });
 
-export default notificationUpload;
+export default photoUpload;
 
 
 

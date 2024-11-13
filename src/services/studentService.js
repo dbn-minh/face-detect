@@ -15,7 +15,7 @@ export const getStudentIdByParentId = async (parent_id) => {
                 {
                     model: model.Student,
                     as: 'student',
-                    attributes: ['name'],
+                    attributes: ['name', 'avatar'],
                 }
             ]
         });
@@ -23,23 +23,25 @@ export const getStudentIdByParentId = async (parent_id) => {
         return {
             student_id: studentParentRecord.student_id,
             name: studentParentRecord.student.name,
+            avatar: studentParentRecord.student.avatar,
         }
 
     } catch (error) {
         throw new Error('Error fetching student by parent: ' + error.message);
     }
 };
-export const saveAvatarPathToDatabase = async (parent_id, fileName ) => {
+export const saveAvatarPathToDatabase = async (parent_id, fileUrl) => {
     try {
-        const student = await getStudentIdByParentId(parent_id);
+        const student_id = await getStudentIdByParentId(parent_id);
 
         await model.Student.update(
-            { avatar: fileName  },
-            { where: { student_id: student.student_id } }
+            { avatar: fileUrl }, // Lưu URL vào cột avatar
+            { where: ( student_id ) }
         );
 
-        return { fileName, student  };
+        return { message: 'Avatar path saved successfully', fileUrl };
     } catch (error) {
         throw new Error('Error saving avatar path to database: ' + error.message);
     }
 };
+

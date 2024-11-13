@@ -411,6 +411,13 @@ export const createBrokenPhotoNotification = async (teacher_id, attendance_id, f
                     ]
                 }
             });
+        }else if (status === 'alighted'){
+            await model.Notification.destroy({
+                where: {
+                    attendance_id,
+                    message: { [Op.like]: '%alighted%' }
+                }
+            });
         }
 
         // Lấy tên học sinh từ danh sách hợp lệ
@@ -462,6 +469,20 @@ export const createEmergencyNotification = async (teacher_id, attendance_id, fil
         throw new Error('Error creating emergency alert notification: ' + error.message);
     }
 };
+
+// Service function to get current notification by attendance_id
+export const getNotificationByAttendanceId = async (attendance_id) => {
+    try {
+        return await model.Notification.findOne({
+            where: { attendance_id },
+            order: [['time_stamp', 'DESC']],
+        });
+
+    } catch (error) {
+        throw new Error('Error fetching notification by attendance ID: ' + error.message);
+    }
+};
+
 
 
 

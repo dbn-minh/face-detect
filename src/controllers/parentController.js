@@ -1,6 +1,7 @@
 import {responseData} from "../config/response.js";
 import * as service from '../services/parentServices.js';
-import {saveAvatarPathToDatabase} from "../services/studentService.js";
+import {getStudentIdByParentId, saveAvatarPathToDatabase} from "../services/studentService.js";
+import {deleteFromAzure, uploadAvatarToAzure} from "../config/azureService.js";
 
 export default class ParentController {
     static constructStudentResponse = (students, notifications) => {
@@ -122,18 +123,46 @@ export default class ParentController {
     // Controller to upload avatar to OneDrive and update DB
     static async uploadStudentAvatar(req, res) {
         const parent_id = req.params.parent_id;
-        const fileName  = req.file.filename;  // File path trên server (để lưu vào database)
-        const filePath = `uploads/avatars/${fileName}`;
-        // try re-name the file to studentName + id
-        try {
-            const result = await saveAvatarPathToDatabase(parent_id, fileName);
+        const file = req.file;
 
-            return responseData(res, 'Avatar uploaded successfully', { result, filePath: filePath }, 200);
+        if (!file) {
+            return responseData(res, 'No file uploaded', null, 400);
+        }
+        try {
+            // Lấy thêm thông tin của học sinh từ database
+            const { student_id, name, avatar: currentAvatarUrl } = await getStudentIdByParentId(parent_id);
+
+            if (currentAvatarUrl) {
+                const oldFileName = decodeURIComponent(currentAvatarUrl.split('/').pop().split('?')[0]);
+                console.log(`Attempting to delete old file: ${oldFileName} from Azure`);
+                await deleteFromAzure(oldFileName, 'avatars');
+            }
+
+            // Tạo tên file với định dạng mới
+            const projectCode = 'STUDENT_TRACKING';
+            const entityType = 'avatar';
+            const fileName = `${projectCode}-${entityType}-parentId=${parent_id}-studentId=${student_id}-${Date.now()}-${file.originalname}`;
+
+            // Tải ảnh lên Azure và lấy URL
+            const fileUrl = await uploadAvatarToAzure(file.buffer, fileName);
+
+            // Lưu đường dẫn URL vào cơ sở dữ liệu
+            await saveAvatarPathToDatabase(parent_id, fileUrl);
+
+            // Trả về thông tin học sinh và URL ảnh
+            return responseData(res, 'Avatar uploaded successfully', {
+                student: {
+                    student_id: student_id,
+                    name: name,
+                    avatarUrl: fileUrl
+                }
+            }, 200);
+
         } catch (error) {
-            // Xử lý lỗi bằng responseData
             return responseData(res, 'Error uploading avatar', error.message, 500);
         }
     }
+
 
     static async writeFeedback(req, res){
         const { parent_id } = req.params;
