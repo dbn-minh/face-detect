@@ -379,11 +379,14 @@ export const getValidStudentAttendances = async (teacher_id) => {
         });
 
         // Trả về danh sách hợp lệ của học sinh với attendance_id và tên
-        return students.map(student => ({
-            attendance_id: student.attendance_id,
-            student_id: student.student.student_id,
-            name: student.student.name
-        }));
+        return {
+            journey_id,
+            students: students.map(student => ({
+                attendance_id: student.attendance_id,
+                student_id: student.student.student_id,
+                name: student.student.name
+            }))
+        };
     } catch (error) {
         throw new Error('Error fetching students by teacher ID: ' + error.message);
     }
@@ -476,15 +479,8 @@ export const createBrokenPhotoNotification = async (teacher_id, attendance_id, f
 };
 
 // Vẫn còn lỗi ở đây nhé
-export const createEmergencyNotification = async (teacher_id, attendance_id, fileUrl) => {
+export const createEmergencyNotification = async (teacher_id, attendance_id, fileUrl, validStudents) => {
     try {
-        const validStudents = await getValidStudentAttendances(teacher_id);
-
-        const isValidAttendance = validStudents.some(student => student.attendance_id === parseInt(attendance_id, 10));
-
-        if (!isValidAttendance) {
-            return { success: false, message: 'Invalid attendance ID for this teacher and journey.' };
-        }
 
         const studentName = validStudents.find(student => student.attendance_id === parseInt(attendance_id, 10)).name;
         const message = `Emergency alert: ${studentName} is in need of urgent assistance`;

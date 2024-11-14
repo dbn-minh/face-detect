@@ -104,7 +104,7 @@ export default class TeacherController {
         const file = req.file;
 
         try {
-            const validStudents = await service.getValidStudentAttendances(teacher_id);
+            const { journey_id, students: validStudents } = await service.getValidStudentAttendances(teacher_id);
 
             const isValidAttendance = validStudents.some(student => student.attendance_id === parseInt(attendance_id, 10));
             if (!isValidAttendance) {
@@ -112,9 +112,8 @@ export default class TeacherController {
             }
 
             // Define file URL
-            const projectCode = 'STUDENT_TRACKING';
             const entityType = 'notification';
-            const fileName = `${projectCode}-${entityType}-teacherId=${teacher_id}-attendanceId=${attendance_id}-status=${status}-${Date.now()}-${file.originalname}`;
+            const fileName = `${entityType}-journey_id=${journey_id}-status=${status}-attendanceId=${attendance_id}-teacherId=${teacher_id}-${Date.now()}-${file.originalname}`;
 
             const fileUrl = await uploadToAzure(req.file.buffer, fileName);
 
@@ -141,14 +140,28 @@ export default class TeacherController {
     static async uploadEmergencyPhoto(req, res) {
         const { teacher_id } = req.params;
         const { attendance_id } = req.body;
-        const fileName = `${Date.now()}-${req.file.originalname}`; // Đường dẫn lưu hình ảnh khẩn cấp
+        const file = req.file;
 
         try {
+            const { journey_id, students: validStudents } = await service.getValidStudentAttendances(teacher_id);
+            console.log(validStudents)
+            const isValidAttendance = validStudents.some(student => student.attendance_id === parseInt(attendance_id, 10));
+            if (!isValidAttendance) {
+                return responseData(res, 'Invalid attendance ID for this teacher and journey.', null, 400);
+            }
+
+            // Define file URL
+            const entityType = 'notification';
+            console.log("Journey_id: ", journey_id)
+            const status = 'alert';
+            const fileName = `${entityType}-journey_id=${journey_id}-status=${status}-attendanceId=${attendance_id}-teacherId=${teacher_id}-${Date.now()}-${file.originalname}`;
+
             const fileUrl = await uploadToAzure(req.file.buffer, fileName);
             // Tạo thông báo khẩn cấp mới
-            const emergencyNotification = await service.createEmergencyNotification(teacher_id, attendance_id, fileUrl);
+            const emergencyNotification = await service.createEmergencyNotification(teacher_id, attendance_id, fileUrl, validStudents, journey_id);
 
             if (!emergencyNotification.success) {
+                await deleteFromAzure(fileName, 'notifications');
                 return responseData(res, emergencyNotification.message, null, 400);  // Trả về lỗi nếu không thành công
             }
 

@@ -16,6 +16,7 @@ router.post('/v1/feedback/:teacher_id', TeacherController.writeFeedback);
 router.get('/v1/students-for-dropdown/:teacher_id', TeacherController.getStudentsForDropdown);
 router.put('/v1/broken-photo/:teacher_id', photoUpload.single('photo'), TeacherController.uploadBrokenPhotos);
 router.put('/v1/emergency-photo/:teacher_id', photoUpload.single('photo'), TeacherController.uploadEmergencyPhoto);
+//Thêm API confirm học sinh đó đã an toàn, put alert thành common, alighted
 //change password
 
 export default router;
