@@ -37,6 +37,23 @@ export default class User extends Model {
     refresh_token: {
       type: DataTypes.TEXT,
       allowNull: true
+    },
+    lastLogin: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    isVerified: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: 0
+    },
+    verificationToken: {
+      type: DataTypes.STRING(255),
+      allowNull: true
+    },
+    verificationTokenExpiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true
     }
   }, {
     sequelize,

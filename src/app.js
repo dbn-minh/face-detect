@@ -1,11 +1,14 @@
 import express from 'express';
 import sequelize from './config/database.js';
 import router from './routes/rootRoutes.js';
+import cookieParser from "cookie-parser";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use(cookieParser()); // allows us to parse incoming cookies
+
 app.use(express.urlencoded({ extended: true }));
 
 // Use the routes defined in the routes folder
