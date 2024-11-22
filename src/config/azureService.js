@@ -13,7 +13,7 @@ if (!AZURE_STORAGE_CONNECTION_STRING) {
 const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
 
 // Hàm upload cho 'notifications' container
-export const uploadToAzure = async (fileBuffer, fileName, containerName = 'notifications') => {
+export const uploadNotificationsToAzure = async (fileBuffer, fileName, containerName = 'notifications') => {
     const containerClient = blobServiceClient.getContainerClient(containerName);
 
     await containerClient.createIfNotExists({ access: "container" });
@@ -46,7 +46,7 @@ export const uploadAvatarToAzure = async (fileBuffer, fileName) => {
     return blockBlobClient.url;
 };
 
-export const deleteFromAzure = async (fileName, containerName = 'avatars') => {
+export const deleteFromAzure = async (fileName, containerName ) => {
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const blockBlobClient = containerClient.getBlockBlobClient(fileName);
 
@@ -60,4 +60,21 @@ export const deleteFromAzure = async (fileName, containerName = 'avatars') => {
     } catch (error) {
         console.error(`Failed to delete file ${fileName} from Azure: ${error.message}`);
     }
+};
+
+export const uploadBiometricToAzure = async (fileBuffer, fileName, containerName = 'biometric') => {
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+
+    // Ensure the container exists
+    await containerClient.createIfNotExists({ access: "container" });
+
+    const blockBlobClient = containerClient.getBlockBlobClient(fileName);
+
+    // Upload file buffer to blob
+    await blockBlobClient.uploadData(fileBuffer, {
+        blobHTTPHeaders: { blobContentType: "image/jpeg" }
+    });
+
+    // Return the blob URL
+    return blockBlobClient.url;
 };

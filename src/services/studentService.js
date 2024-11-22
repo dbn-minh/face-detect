@@ -45,16 +45,16 @@ export const saveAvatarPathToDatabase = async (parent_id, fileUrl) => {
     }
 };
 
-export const saveFeatureVectorToDatabase = async (parent_id, feature_vector) => {
+export const saveFeatureVectorToDatabase = async (parent_id, feature_vectors) => {
     try {
         const student_id = await getStudentIdByParentId(parent_id);
 
         await model.Student.update(
-            { feature_vector: feature_vector }, // Lưu URL vào cột avatar
+            { feature_vector: JSON.stringify(feature_vectors) }, // Store as JSON string
             { where: ( student_id ) }
         );
 
-        return { message: 'Avatar path saved successfully',  feature_vector};
+        return { message: 'Avatar path saved successfully',  feature_vectors};
     } catch (error) {
         throw new Error('Error saving avatar path to database: ' + error.message);
     }

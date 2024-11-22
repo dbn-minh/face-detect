@@ -1,7 +1,11 @@
 import {responseData} from "../config/response.js";
 import * as service from '../services/parentServices.js';
 import {getStudentIdByParentId, saveAvatarPathToDatabase, saveFeatureVectorToDatabase} from "../services/studentService.js";
-import {deleteFromAzure, uploadAvatarToAzure} from "../config/azureService.js";
+import {
+    deleteFromAzure,
+    uploadAvatarToAzure,
+    uploadBiometricToAzure
+} from "../config/azureService.js";
 import axios from 'axios'; // Use ES Module import
 
 
@@ -183,56 +187,79 @@ export default class ParentController {
     // Controller to upload avatar to OneDrive and update DB
     static async extractFeature(req, res) {
         const parent_id = req.params.parent_id;
-        const file = req.file;
+        const files = req.files;
 
-        if (!file) {
-            return responseData(res, 'No file uploaded', null, 400);
+        if (!files || files.length !== 5) {
+            return responseData(res, 'Please upload exactly 5 images.', null, 400);
         }
-        // try {
+
+        try {
             // Lấy thêm thông tin của học sinh từ database
-            const { student_id, name, avatar: currentAvatarUrl } = await getStudentIdByParentId(parent_id);
+            const { student_id, name } = await getStudentIdByParentId(parent_id);
 
-            if (currentAvatarUrl) {
-                const oldFileName = decodeURIComponent(currentAvatarUrl.split('/').pop().split('?')[0]);
-                console.log(`Attempting to delete old file: ${oldFileName} from Azure`);
-                await deleteFromAzure(oldFileName, 'avatars');
-            }
+            // if (currentAvatarUrl) {
+            //     const oldFileName = decodeURIComponent(currentAvatarUrl.split('/').pop().split('?')[0]);
+            //     console.log(`Attempting to delete old file: ${oldFileName} from Azure`);
+            //     await deleteFromAzure(oldFileName, 'avatars');
+            // }
+            //
+            // // Tạo tên file với định dạng mới
+            // const projectCode = 'STUDENT_TRACKING';
+            // const entityType = 'avatar';
+            // const fileName = `${projectCode}-${entityType}-parentId=${parent_id}-studentId=${student_id}-${Date.now()}-${file.originalname}`;
+            //
+            // // Tải ảnh lên Azure và lấy URL
+            // const fileUrl = await uploadAvatarToAzure(file.buffer, fileName);
 
-            // Tạo tên file với định dạng mới
+        // Create folder structure and initialize
+            const containerName = 'biometric';
+            const folderName = `student_id=${student_id}`;
             const projectCode = 'STUDENT_TRACKING';
-            const entityType = 'avatar';
-            const fileName = `${projectCode}-${entityType}-parentId=${parent_id}-studentId=${student_id}-${Date.now()}-${file.originalname}`;
+            const entityType = 'feature-vector';
+            const imageUrls = [];
 
-            // Tải ảnh lên Azure và lấy URL
-            const fileUrl = await uploadAvatarToAzure(file.buffer, fileName);
-
+            // Upload each file to Azure and collect URLs
+            for (const file of files) {
+                const fileName = `${projectCode}-${entityType}-${folderName}-${Date.now()}-${file.originalname}`;
+                const fileUrl = await uploadBiometricToAzure(file.buffer, fileName, containerName);
+                imageUrls.push(fileUrl);
+            }
 
              // --- ADDITION: Transfer the file URL to the Flask API ---
             const flaskUrl = 'http://localhost:5000/extract-vector'; // Replace with Flask API URL
-            const flaskResponse = await axios.post(flaskUrl, { fileUrl });
+            const flaskResponse = await axios.post(flaskUrl, { imageUrls  });
 
             if (flaskResponse.status !== 200) {
                 throw new Error(`Flask API Error: ${flaskResponse.data.message || 'Unknown error'}`);
             }
 
-            const featureVector = flaskResponse.data.featureVector;
+            const featureVectors = flaskResponse.data.featureVectors;
             // Lưu đường dẫn URL vào cơ sở dữ liệu
-            await saveFeatureVectorToDatabase(parent_id, featureVector);
+            await saveFeatureVectorToDatabase(student_id, featureVectors);
 
-            console.log(featureVector)
+            console.log(featureVectors)
 
             // Trả về thông tin học sinh và URL ảnh
             return responseData(res, 'Avatar uploaded successfully', {
                 student: {
                     student_id: student_id,
                     name: name,
-                    feature_vector: featureVector
+                    feature_vector: featureVectors,
+                    image_urls: imageUrls
                 }
             }, 200);
 
-        // } catch (error) {
-        //     return responseData(res, 'Error uploading avatar', error.message, 500);
-        // }
+         } catch (error) {
+            console.error('Error in extractFeature:', error.message);
+
+            // Clean up uploaded files in case of error
+            for (const fileUrl of imageUrls || []) {
+                const fileName = decodeURIComponent(fileUrl.split('/').pop().split('?')[0]);
+                await deleteFromAzure(fileName, 'biometric');
+            }
+
+            return responseData(res, 'Error extracting feature vectors.', error.message, 500);
+        }
     }
 
 }
