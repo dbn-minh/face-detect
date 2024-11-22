@@ -23,6 +23,7 @@ router.post('/v1/feedback/:parent_id', ParentController.writeFeedback);
 
 // pending
 router.put('/v1/avatar/:parent_id', photoUpload.single('avatar'), ParentController.uploadStudentAvatar);
+// api upload pictures
 // router.put('change-pass/:parent_id', AuthController.updatePassword);
 
 export default router;

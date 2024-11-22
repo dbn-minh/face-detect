@@ -98,6 +98,7 @@ export default class TeacherController {
         }
     }
 
+    // Viết API để tạo ra một Journey mới cho thiết bị IOT, đồng thời fixed luôn danh sách học sinh trong attendance nhé
     static async uploadBrokenPhotos(req, res) {
         const { teacher_id } = req.params;
         const { attendance_id, status } = req.body;
@@ -117,7 +118,7 @@ export default class TeacherController {
 
             const fileUrl = await uploadToAzure(req.file.buffer, fileName);
 
-            const newNotification = await service.createBrokenPhotoNotification(teacher_id, attendance_id, fileUrl, status, validStudents);
+            const newNotification = await service.createBrokenPhotoNotification(teacher_id, attendance_id, fileUrl, status, validStudents, journey_id);
             // Handle error, delete picture uploaded
             if (!newNotification.success) {
                 await deleteFromAzure(fileName, 'notifications');
@@ -144,7 +145,6 @@ export default class TeacherController {
 
         try {
             const { journey_id, students: validStudents } = await service.getValidStudentAttendances(teacher_id);
-            console.log(validStudents)
             const isValidAttendance = validStudents.some(student => student.attendance_id === parseInt(attendance_id, 10));
             if (!isValidAttendance) {
                 return responseData(res, 'Invalid attendance ID for this teacher and journey.', null, 400);
@@ -152,7 +152,6 @@ export default class TeacherController {
 
             // Define file URL
             const entityType = 'notification';
-            console.log("Journey_id: ", journey_id)
             const status = 'alert';
             const fileName = `${entityType}-journey_id=${journey_id}-status=${status}-attendanceId=${attendance_id}-teacherId=${teacher_id}-${Date.now()}-${file.originalname}`;
 
