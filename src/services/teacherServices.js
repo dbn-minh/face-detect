@@ -1,7 +1,8 @@
 import initModels from "../models/init-models.js";
 import sequelize from "../config/database.js";
-import {Op} from "sequelize";
 let model = initModels(sequelize);
+import { Op } from 'sequelize';
+import {deleteFromAzure} from "../config/azureService.js";
 
 // Phần này nên đưa vào websocket làm realtime, sẽ fetch được những thông báo mới
 export const getNotificationsByStudentIdService = async (student_id) => {
@@ -46,8 +47,8 @@ export const getNotificationsByStudentIdService = async (student_id) => {
         }
 
         return {
-            notifications,
-            alertMessages: alertMessages.length > 0 ? alertMessages : null
+            alertMessages: alertMessages.length > 0 ? alertMessages : null,
+            notifications
         };
     } catch (error) {
         throw new Error('Error fetching notifications: ' + error.message);
@@ -104,11 +105,10 @@ export const getDetailsOfTeacher = async (teacher_id) => {
         }
 
         return {
-            error: null,
             data: {
                 driver: driver,
-                notifications: notifications,
-                alertMessages: alertMessages.length > 0 ? alertMessages : null
+                alertMessages: alertMessages.length > 0 ? alertMessages : null,
+                notifications: notifications
             }
         };
 
@@ -116,6 +116,39 @@ export const getDetailsOfTeacher = async (teacher_id) => {
         return { error: error.message, data: null };
     }
 };
+
+export const getNotificationsByTeacherId = async (teacher_id) => {
+    try {
+        const bus = await model.Bus.findOne({
+            where: {teacher_id},
+            attributes: ['bus_id'],
+        })
+         const students = await model.Student.findAll({
+            where: { bus_id: bus.bus_id }
+        });
+
+        const notifications = [];
+        const alertMessages = [];
+
+        for (const student of students) {
+            const { notifications: studentNotifications, alertMessages: studentAlerts } = await getNotificationsByStudentIdService(student.student_id);
+
+            notifications.push(...studentNotifications);
+            if (studentAlerts) {
+                alertMessages.push(...studentAlerts);
+            }
+        }
+        return {
+            data: {
+                alertMessages: alertMessages.length > 0 ? alertMessages : null,
+                notifications: notifications
+            }
+        };
+    } catch (error) {
+        throw new Error('Error writing feedback: ' + error.message);
+    }
+};
+
 
 export const getStudentsInfo = async (teacher_id) => {
     try {
@@ -209,10 +242,6 @@ export const getSettingOfTeacher = async (teacher_id) => {
             ]
         });
 
-        if (!bus) {
-            throw new Error('No bus found for this teacher.');
-        }
-
         // Prepare the setting response
         return {
             bus_id: bus.bus_id,
@@ -244,10 +273,6 @@ export const updateProfileOfTeacher = async (teacher_id, updatedData) => {
                 }
             ]
         });
-
-        if (!teacher) {
-            throw new Error('Teacher not found.');
-        }
 
         // Update the teacher's department
         teacher.department = department || teacher.department;  // Update only if provided
@@ -293,6 +318,205 @@ export const writeFeedback = async (teacher_id, title, content) => {
         throw new Error('Error writing feedback: ' + error.message);
     }
 };
+
+export const updateAttendanceStatus = async (attendance_id, status) => {
+    const time_stamp = new Date();
+    // Kiểm tra xem status có hợp lệ không
+    if (status !== 'boarded' && status !== 'alighted') {
+        return { success: false, message: `Invalid status: ${status}. Accepted values are 'boarded' or 'alighted'.` };
+    }
+
+    try {
+        // Nếu status là 'boarded', cập nhật thời gian boarded và xóa dữ liệu cũ của alighted
+        if (status === 'boarded') {
+            // Đặt thời gian boarded, xóa alighted và cập nhật status thành boarded
+            await model.Attendance.update(
+                { boarded: time_stamp, alighted: null, status: 'boarded' },
+                { where: { attendance_id } }
+            );
+
+        } else if (status === 'alighted') {
+            await model.Attendance.update(
+                { alighted: time_stamp, status: 'alighted' },
+                { where: { attendance_id } }
+            );
+        }
+        return { success: true, message: 'Attendance status updated successfully.' };
+    } catch (error) {
+        throw new Error('Error updating attendance status: ' + error.message);
+    }
+};
+
+export const getValidStudentAttendances = async (teacher_id) => {
+    try {
+        // Lấy bus_id từ teacher_id và tìm journey đang hoạt động
+        const busRecord = await model.Bus.findOne({
+            where: { teacher_id },
+            attributes: ['bus_id'],
+            include: [
+                {
+                    model: model.Journey,
+                    as: 'Journeys',
+                    where: { status: 'ongoing' },
+                    attributes: ['journey_id']
+                }
+            ]
+        });
+
+        const journey_id = busRecord.Journeys[0].journey_id;
+
+        // Lấy danh sách học sinh thuộc journey đang hoạt động
+        const students = await model.Attendance.findAll({
+            where: { journey_id },
+            attributes: ['attendance_id'],
+            include: [
+                {
+                    model: model.Student,
+                    as: 'student',
+                    attributes: ['student_id', 'name']
+                }
+            ]
+        });
+
+        // Trả về danh sách hợp lệ của học sinh với attendance_id và tên
+        return {
+            journey_id,
+            students: students.map(student => ({
+                attendance_id: student.attendance_id,
+                student_id: student.student.student_id,
+                name: student.student.name
+            }))
+        };
+    } catch (error) {
+        throw new Error('Error fetching students by teacher ID: ' + error.message);
+    }
+};
+
+export const createBrokenPhotoNotification = async (teacher_id, attendance_id, fileUrl, status, validStudents) => {
+    let fileUrlInService = fileUrl;
+    try {
+
+        if (status === 'boarded') {
+            const threeHoursAgo = new Date();
+            threeHoursAgo.setHours(threeHoursAgo.getHours() - 3);
+
+            const recentBoardedNotification = await model.Notification.findOne({
+                where: {
+                    attendance_id,
+                    status: 'common',
+                    message: { [Op.like]: '%boarded%' },
+                    time_stamp: { [Op.gte]: threeHoursAgo }
+                },
+                order: [['time_stamp', 'DESC']]
+            });
+
+            if (recentBoardedNotification) {
+                // If recent notification exists, update by deleting the old one
+                const oldFileName = decodeURIComponent(recentBoardedNotification.image.split('/').pop().split('?')[0]);
+                await deleteFromAzure(oldFileName, 'notifications');
+                await recentBoardedNotification.destroy();
+            } else {
+                // Delete older boarded/alighted notifications for this attendance
+                const oldNotifications = await model.Notification.findAll({
+                    where: {
+                        attendance_id,
+                        [Op.or]: [
+                            { message: { [Op.like]: '%alighted%' } },
+                            { message: { [Op.like]: '%boarded%' } }
+                        ]
+                    }
+                });
+
+                for (const notification of oldNotifications) {
+                    if (notification.image) {
+                        const fileName = decodeURIComponent(notification.image.split('/').pop().split('?')[0]);
+                        await deleteFromAzure(fileName, 'notifications');
+                    }
+                    await notification.destroy();
+                }
+            }
+        } else if (status === 'alighted') {
+            // Delete previous alighted notifications for this attendance
+            const oldAlightedNotifications = await model.Notification.findAll({
+                where: {
+                    attendance_id,
+                    message: { [Op.like]: '%alighted%' }
+                }
+            });
+
+            for (const notification of oldAlightedNotifications) {
+                if (notification.image) {
+                    const fileName = decodeURIComponent(notification.image.split('/').pop().split('?')[0]);
+                    await deleteFromAzure(fileName, 'notifications');
+                }
+                await notification.destroy();
+            }
+        }
+
+        // Lấy tên học sinh từ danh sách hợp lệ
+        const studentName = validStudents.find(student => student.attendance_id === parseInt(attendance_id, 10)).name;
+        const message = `${studentName} has ${status === 'boarded' ? 'boarded' : 'alighted'} from the bus`;
+
+        // Tạo bản ghi Notification mới
+        const newNotification = await model.Notification.create({
+            attendance_id,
+            time_stamp: new Date(),
+            message,
+            image: fileUrl,
+            status: 'common'
+        });
+
+        return { success: true, data: newNotification };
+
+    } catch (error) {
+        if (fileUrlInService) {
+            const fileName = decodeURIComponent(fileUrlInService.split('/').pop().split('?')[0]);
+            console.log(`Deleting uploaded file due to error: ${fileName}`);
+            await deleteFromAzure(fileName, 'notifications');
+        }
+        throw new Error('Error creating broken photo notification: ' + error.message);
+    }
+};
+
+// Vẫn còn lỗi ở đây nhé
+export const createEmergencyNotification = async (teacher_id, attendance_id, fileUrl, validStudents) => {
+    try {
+
+        const studentName = validStudents.find(student => student.attendance_id === parseInt(attendance_id, 10)).name;
+        const message = `Emergency alert: ${studentName} is in need of urgent assistance`;
+
+        // Tạo bản ghi Notification mới với status là 'alert'
+        const newNotification = await model.Notification.create({
+            attendance_id,
+            time_stamp: new Date(),
+            message,
+            image: fileUrl,
+            status: 'alert'
+        });
+
+        return { success: true, data: newNotification };
+
+    } catch (error) {
+        throw new Error('Error creating emergency alert notification: ' + error.message);
+    }
+};
+
+// Service function to get current notification by attendance_id
+export const getNotificationByAttendanceId = async (attendance_id) => {
+    try {
+        return await model.Notification.findOne({
+            where: { attendance_id },
+            order: [['time_stamp', 'DESC']],
+        });
+
+    } catch (error) {
+        throw new Error('Error fetching notification by attendance ID: ' + error.message);
+    }
+};
+
+
+
+
 
 
 

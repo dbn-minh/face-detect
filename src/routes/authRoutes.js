@@ -18,9 +18,4 @@ router.post('/reset-password', AuthController.resetPassword);
 router.post('/change-password',verifyToken, AuthController.changePassword);
 router.post('/verify-code-number',AuthController.verifyResetOrVerificationToken);
 
-
-
-
-// change password
-
 export default router;

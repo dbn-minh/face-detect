@@ -1,9 +1,7 @@
 import jwt from 'jsonwebtoken';
 
 export const createToken = (data) => {
-    let token = jwt.sign({ data }, "secret", { algorithm: "HS256", expiresIn: "10m"});
-
-    return token;
+    return jwt.sign({data}, "secret", {algorithm: "HS256", expiresIn: "10m"});
 }
 
 export const checkToken = (token) => jwt.verify(token, "secret", (error, decoded) => error

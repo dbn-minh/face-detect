@@ -130,6 +130,7 @@ export const signupService = async (email, password, role_id, name, phone_number
     await sendVerificationEmail(newUser.email, verificationToken);
 
     return { data: newUser, status: 200, message: "Account created successfully. A verification email has been sent." };
+
   } catch (error) {
     console.error(error);
     return { error: "Error creating user", status: 500 };
@@ -394,12 +395,17 @@ export const logoutService = async (req, res) => {
     // let access_token = decodeToken(token);
     let access_token = decodeToken(req.cookies.token);
 
+    // Check if the token was decoded succe                     ssfully
+    if (!access_token || !access_token.data || !access_token.data.user_id) {
+      return { error: "Invalid token or missing user data in token", status: 400 };
+    }
+
     let get_user = await model.User.findOne({
       where: { user_id: access_token.data.user_id },
     });
 
     await model.User.update(
-      { refresh_token: "" },
+      { refresh_token: null },
       {
         where: { user_id: get_user.user_id },
       }

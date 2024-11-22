@@ -1,592 +1,1105 @@
 import initModels from "../models/init-models.js";
 import sequelize from "../config/database.js";
 import bcrypt from "bcrypt";
-import {
-  createRefToken,
-  createToken,
-} from "../config/jwt.js";
-import {Op} from "sequelize";
+import { Op } from 'sequelize';
+// import {
+//   createRefToken,
+//   createToken,
+// } from "../config/jwt.js";
+// import { v4 as uuidv4 } from 'uuid';
+
 let model = initModels(sequelize);
 
-export const getAdminDetails = async () => {
-    try {
-        // Step 1: Fetch all students
-        const students = await model.Student.findAll();
+import { findExistingUser } from '../utils/userUtils.js';
+import { getExistingBusByLicensePlate } from '../utils/busUtils.js';
 
-        if (!students.length) {
-            return { error: "No students found", data: null };
-        }
+export default class service {
+    // Main services
+    static async getNotifications() {
+        try {
+            // Fetch all notifications with status "alert"
+            const alertNotifications = await model.Notification.findAll({
+                where: { status: 'alert' },
+                attributes: ['notification_id', 'time_stamp', 'message', 'image', 'status'],
+                include: [
+                    {
+                        model: model.Attendance,
+                        as: 'attendance',
+                        attributes: ['attendance_id'],
+                        include: [
+                            {
+                                model: model.Student,
+                                as: 'student',
+                                attributes: ['student_id', 'name', 'class', 'avatar'],
+                                include: [
+                                    {
+                                        model: model.Parent,
+                                        as: 'parent_id_Parents',
+                                        attributes: ['parent_id', 'address'],
+                                        include: [
+                                            {
+                                                model: model.User,
+                                                as: 'user',
+                                                attributes: ['user_id', 'name', 'phone_number', 'email'],
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            });
 
-        // Step 2: Fetch parent details for each student
-        const parentIds = students.map(student => student.parent_id);
-        const parents = await model.Parent.findAll({
-            where: { parent_id: parentIds },
-            include: [{
-                model: model.User,
-                as: 'user',
-                attributes: ['name', 'email', 'phone_number']
-            }]
-        });
+            // Fetch all buses with status "broken"
+            const brokenBuses = await model.Bus.findAll({
+                where: { status: 'broken' },
+                attributes: ['bus_id', 'license_plate', 'current_location']
+            });
 
-        // Step 3: Fetch teacher details for each student
-        const teacherIds = students.map(student => student.teacher_id).filter(id => id !== null);
-        const teachers = await model.Teacher.findAll({
-            where: { teacher_id: teacherIds },
-            include: [{
-                model: model.User,
-                as: 'user',
-                attributes: ['name', 'email', 'phone_number']
-            }]
-        });
+            // Count ongoing buses and total buses
+            const ongoingBusCount = await model.Bus.count({ where: { status: 'ongoing' } });
+            const totalBusCount = await model.Bus.count();
 
-        // Step 4: Combine the results
-        const studentDetails = students.map(student => {
-            const parent = parents.find(p => p.parent_id === student.parent_id);
-            const teacher = teachers.find(t => t.teacher_id === student.teacher_id);
+            // Count students with "absent" status in attendance
+            const absentStudentCount = await model.Attendance.count({ where: { status: 'absent' } });
 
-            return {
-                student_id: student.student_id,
-                student_name: student.name,
-                class: student.class,
-                avatar: student.avatar,
-                feature_vector: student.feature_vector,
-                parent: parent ? {
-                    parent_id: parent.parent_id,
-                    parent_name: parent.user.name,
-                    parent_email: parent.user.email,
-                    parent_phone_number: parent.user.phone_number,
-                    address: parent.address
-                } : null,
-                teacher: teacher ? {
-                    teacher_id: teacher.teacher_id,
-                    teacher_name: teacher.user.name,
-                    teacher_email: teacher.user.email,
-                    teacher_phone_number: teacher.user.phone_number,
-                    department: teacher.department
-                } : null
-            };
-        });
+            const unsolvedFeedback = await model.Feedback.findAll({
+                where: { status: 'unsolved' },
+                attributes: ['feedback_id', 'title', 'content', 'user_id'],
+                include: [
+                    {
+                        model: model.User,
+                        as: 'user',
+                        attributes: ['user_id', 'name', 'email', 'phone_number']
+                    }
+                ]
+            });
 
-        return { error: null, data: studentDetails };
-    } catch (error) {
-        console.error("Error fetching student details:", error);
-        return { error: "An error occurred while fetching student details", data: null };
-    }
-};
-// Service to get all student IDs
-export const getAllStudentIDs = async () => {
-    try {
-        const students = await model.Student.findAll({
-            attributes: ['student_id']
-        });
-
-        const student_ids = students.map(student => student.student_id);
-        return { error: null, data: student_ids };
-    } catch (error) {
-        console.error("Error fetching student IDs:", error);
-        return { error: "An error occurred while fetching student IDs", data: null };
-    }
-};
-
-// Service to get attendance IDs associated with student IDs
-export const getAttendanceIDsByStudentIDs = async (student_ids) => {
-    try {
-        const attendances = await model.Attendance.findAll({
-            where: { student_id: student_ids },
-            attributes: ['attendance_id']
-        });
-
-        const attendance_ids = attendances.map(attendance => attendance.attendance_id);
-        return { error: null, data: attendance_ids };
-    } catch (error) {
-        console.error("Error fetching attendance IDs:", error);
-        return { error: "An error occurred while fetching attendance IDs", data: null };
-    }
-};
-
-// Service to get notifications associated with attendance IDs
-export const getNotificationsByAttendanceIDs = async (attendance_ids) => {
-    try {
-        const notifications = await model.Notification.findAll({
-            where: { attendance_id: attendance_ids },
-            attributes: ['notification_id', 'time_stamp', 'message', 'image']
-        });
-
-        return { error: null, data: notifications };
-    } catch (error) {
-        console.error("Error fetching notifications:", error);
-        return { error: "An error occurred while fetching notifications", data: null };
-    }
-};
-export const getAllUsersWithRoleDetails = async () => {
-    try {
-        // Fetch all users with their role information
-        const users = await model.User.findAll({
-            attributes: ['user_id', 'name', 'phone_number', 'email', 'role_id'],
-            include: [{
-                model: model.Role,
-                as: 'role',
-                attributes: ['role_name']
-            }]
-        });
-
-        if (!users || users.length === 0) {
-            return { error: "No users found", data: null };
-        }
-
-        // Process each user and fetch role-specific details
-        const userDetails = await Promise.all(users.map(async (user) => {
-            const userData = user.toJSON();
-
-            // Fetch role-specific details based on role_id
-            if (user.role_id === 1) { // Parent
-                const parentDetails = await model.Parent.findOne({
-                    where: { user_id: user.user_id },
-                    attributes: ['address']
-                });
-                userData.role_details = parentDetails ? parentDetails.toJSON() : null;
-            } else if (user.role_id === 2) { // Driver
-                const driverDetails = await model.Driver.findOne({
-                    where: { user_id: user.user_id },
-                    attributes: ['license_number']
-                });
-                userData.role_details = driverDetails ? driverDetails.toJSON() : null;
-            } else if (user.role_id === 3) { // Teacher
-                const teacherDetails = await model.Teacher.findOne({
-                    where: { user_id: user.user_id },
-                    attributes: ['department']
-                });
-                userData.role_details = teacherDetails ? teacherDetails.toJSON() : null;
-            }
-
-            return userData;
-        }));
-
-        return { error: null, data: userDetails };
-    } catch (error) {
-        console.error("Error fetching users with role details:", error);
-        return { error: "An error occurred while fetching users", data: null };
-    }
-};
-export const adminCreateUserService = async (role_id, name, phone_number, email, password, other) => {
-  try {
-    let check_user = await model.User.findOne({
-      where: { email },
-    });
-
-    if (check_user) {
-      return { error: "Email exists, use another email", status: 400 };
-    }
-
-    let hashedPassword = bcrypt.hashSync(password, 10);
-    let newUser = await model.User.create({
-      role_id,
-      name,
-      phone_number,
-      email,
-      password: hashedPassword,
-    });
-
-    switch (role_id) {
-      case 1: // Parent
-        await model.Parent.create({
-          address: other,
-          user_id: newUser.user_id,
-        });
-        break;
-      case 2: // Driver
-        await model.Driver.create({
-          license_number: other,
-          user_id: newUser.user_id,
-        });
-        break;
-      case 3: // Teacher
-        await model.Teacher.create({
-          department: other,
-          user_id: newUser.user_id,
-        });
-        break;
-      case 4: // Admin
-        // No additional action needed unless there's admin-specific info
-        break;
-    }
-
-    // Generate token for the new user (optional, depending on your use case)
-    let key = new Date().getTime();
-    let token = createToken({ user_id: newUser.user_id, key });
-    let ref_token = createRefToken({ user_id: newUser.user_id, key });
-
-    // Save refresh token
-    await model.User.update(
-      { refresh_token: ref_token },
-      {
-        where: { user_id: newUser.user_id },
-      }
-    );
-
-    return { data: { newUser, token }, status: 200 };
-  } catch (error) {
-    console.error(error);
-    return { error: "Error creating user", status: 500 };
-  }
-};
-export const adminUpdateUserService = async (user_id, role_id, name, phone_number, email, password, other) => {
-  try {
-    // Fetch the user by user_id
-    let user = await model.User.findOne({
-      where: { user_id },
-    });
-
-    if (!user) {
-      return { error: "User not found", status: 404 };
-    }
-
-    // Update user details
-    let updatedData = {
-      role_id,
-      name,
-      phone_number,
-      email,
-    };
-
-    // If the password is provided, hash it
-    if (password) {
-      updatedData.password = bcrypt.hashSync(password, 10);
-    }
-
-    await model.User.update(updatedData, {
-      where: { user_id },
-    });
-
-    // Update role-specific details
-    switch (role_id) {
-      case 1: // Parent
-        await model.Parent.update(
-          { address: other },
-          { where: { user_id } }
-        );
-        break;
-      case 2: // Driver
-        await model.Driver.update(
-          { license_number: other },
-          { where: { user_id } }
-        );
-        break;
-      case 3: // Teacher
-        await model.Teacher.update(
-          { department: other },
-          { where: { user_id } }
-        );
-        break;
-    }
-
-    return { data: "User updated successfully", status: 200 };
-  } catch (error) {
-    console.error(error);
-    return { error: "Error updating user", status: 500 };
-  }
-};
-
-export const adminDeleteUserService = async (user_id) => {
-    try {
-        // Fetch the user by user_id
-        let user = await model.User.findOne({
-            where: { user_id },
-        });
-
-        if (!user) {
-            return { error: "User not found", status: 404 };
-        }
-
-        // Determine the role of the user
-        const role_id = user.role_id;
-
-        // Delete role-specific details
-        switch (role_id) {
-            case 1: // Parent
-                await model.Parent.destroy({
-                    where: { user_id }
-                });
-                break;
-            case 2: // Driver
-                await model.Driver.destroy({
-                    where: { user_id }
-                });
-                break;
-            case 3: // Teacher
-                await model.Teacher.destroy({
-                    where: { user_id }
-                });
-                break;
-        }
-
-        // Delete the user record from the User table
-        await model.User.destroy({
-            where: { user_id }
-        });
-
-        return { data: "User deleted successfully", status: 200 };
-    } catch (error) {
-        console.error("Error deleting user:", error);
-        return { error: "Error deleting user", status: 500 };
-    }
-};
-
-export const listPendingRegistrationsService = async () => {
-    try {
-        // Fetch all students with teacher_id as null
-        const pendingRegistrations = await model.Student.findAll({
-            where: { teacher_id: null },
-            attributes: ['student_id', 'name', 'class', 'parent_id', 'avatar', 'feature_vector'],
-            include: [{
-                model: model.Parent,
-                as: 'parent',
-                attributes: ['parent_id', 'user_id'],
-                include: [{
-                    model: model.User,
-                    as: 'user',
-                    attributes: ['name', 'email', 'phone_number']
-                }]
-            }]
-        });
-
-        if (!pendingRegistrations || pendingRegistrations.length === 0) {
-            return { error: "No pending registrations found", data: null };
-        }
-
-        return { error: null, data: pendingRegistrations };
-    } catch (error) {
-        console.error("Error fetching pending registrations:", error);
-        return { error: "An error occurred while fetching pending registrations", data: null };
-    }
-};
-
-export const getAllTeachersService = async () => {
-    try {
-        const teachers = await model.Teacher.findAll({
-            attributes: ['teacher_id', 'department'],
-            include: [{
-                model: model.User,
-                as: 'user',
-                attributes: ['name', 'email', 'phone_number']
-            }]
-        });
-
-        if (!teachers || teachers.length === 0) {
-            return { error: "No teachers found", data: null };
-        }
-
-        return { error: null, data: teachers };
-    } catch (error) {
-        console.error("Error fetching teachers:", error);
-        return { error: "An error occurred while fetching teachers", data: null };
-    }
-};
-export const assignTeacherToStudentsService = async (teacher_id, student_ids) => {
-    try {
-        // Check if the teacher exists
-        const teacher = await model.Teacher.findOne({
-            where: { teacher_id }
-        });
-        if (!teacher) {
-            return { error: "Teacher not found", data: null };
-        }
-
-        // Fetch the teacher's user details separately
-        const teacherUser = await model.User.findOne({
-            where: { user_id: teacher.user_id },
-            attributes: ['name', 'email', 'phone_number']
-        });
-
-        // Update students with the provided teacher_id
-        await model.Student.update(
-            { teacher_id },
-            { where: { student_id: student_ids, teacher_id: null } } // Only update students with null teacher_id
-        );
-
-        // Fetch the updated student details
-        const students = await model.Student.findAll({
-            where: { student_id: student_ids },
-            attributes: ['student_id', 'name', 'class', 'parent_id']
-        });
-
-        // Fetch the parent user details for each student
-        const studentDetails = await Promise.all(
-            students.map(async (student) => {
-                const parent = await model.Parent.findOne({ where: { parent_id: student.parent_id } });
-                const parentUser = await model.User.findOne({
-                    where: { user_id: parent.user_id },
-                    attributes: ['name', 'email', 'phone_number']
-                });
+            // Map through the notifications to structure the response
+            const notifications = alertNotifications.map(notification => {
+                const student = notification.attendance?.student;
+                const parent = student?.parent_id_Parents?.[0];
 
                 return {
+                    notification_id: notification.notification_id,
+                    time_stamp: notification.time_stamp,
+                    message: notification.message,
+                    image: notification.image || null,
+                    status: notification.status,
+                    student: student
+                        ? {
+                            student_id: student.student_id,
+                            name: student.name,
+                            class: student.class,
+                            avatar: student.avatar,
+                            parent: parent
+                                ? {
+                                    parent_id: parent.parent_id,
+                                    address: parent.address,
+                                    user: parent.user
+                                        ? {
+                                            user_id: parent.user.user_id,
+                                            name: parent.user.name,
+                                            phone_number: parent.user.phone_number,
+                                            email: parent.user.email
+                                        }
+                                        : null
+                                }
+                                : null
+                        }
+                        : null
+                };
+            });
+
+            // Map the broken buses information for the response
+            const brokenBusesInfo = brokenBuses.map(bus => ({
+                bus_id: bus.bus_id,
+                license_plate: bus.license_plate,
+                current_location: bus.current_location
+            }));
+
+            const unsolvedFeedbackList = unsolvedFeedback.map(feedback => ({
+                feedback_id: feedback.feedback_id,
+                title: feedback.title,
+                content: feedback.content,
+                user: feedback.user
+                    ? {
+                        user_id: feedback.user.user_id,
+                        name: feedback.user.name,
+                        email: feedback.user.email,
+                        phone_number: feedback.user.phone_number
+                    }
+                    : null
+            }));
+
+            // Structure the final response
+            return {
+                alert_notifications: notifications,
+                broken_buses: brokenBusesInfo,
+                bus_status_summary: `${ongoingBusCount}/${totalBusCount} buses ongoing`,
+                absent_students_count: absentStudentCount,
+                unsolved_feedback: unsolvedFeedbackList
+            };
+        } catch (error) {
+            throw new Error('Error fetching notifications: ' + error.message);
+        }
+    }
+
+    static async getDashboard() {
+        try {
+            // Logic for fetching dashboard data
+        } catch (error) {
+            throw new Error('Error fetching dashboard: ' + error.message);
+        }
+    }
+
+    static async getSetting(user_id) {
+        try {
+            const user = await model.User.findOne({
+                where: { user_id: user_id },
+                attributes: ['user_id', 'name', 'phone_number', 'email', 'role_id'],
+                include: [
+                    {
+                        model: model.Role,
+                        as: 'role',
+                        attributes: ["role_name"]
+                    }
+                ]
+            });
+            // Check if the user exists and verify their role
+            if (!user || user.role.role_name !== 'Admin') {
+                return { error: "Unauthorized access" };
+            }
+
+            return {
+                user_id: user.user_id,
+                name: user.name,
+                phone_number: user.phone_number,
+                email: user.email
+            };
+        } catch (error) {
+            throw new Error('Error fetching settings: ' + error.message);
+        }
+    }
+
+
+    static async updateInfo(user_id, {name, phone_number, email}) {
+        try {
+            // Find the user by ID
+            const user = await model.User.findOne({
+                where: { user_id } ,
+                include: [
+                    {
+                        model: model.Role,
+                        as: 'role',
+                        attributes: ['role_name']
+                    }
+                ]
+            });
+
+            // Check if the user exists and verify their role
+            if (!user || user.role.role_name !== 'Admin') {
+                return { error: "Unauthorized access" };
+            }
+
+            if (
+                user.name === name &&
+                user.phone_number === phone_number &&
+                user.email === email
+            ) {
+                return { error: "No changes detected. Update failed." };
+            }
+
+            // Update user information
+            user.name = name;
+            user.phone_number = phone_number;
+            user.email = email;
+
+            // Save changes
+            await user.save();
+
+            // Return updated user information
+            return {
+                user_id: user.user_id,
+                name: user.name,
+                phone_number: user.phone_number,
+                email: user.email,
+            };
+        } catch (error) {
+            throw new Error('Error updating info: ' + error.message);
+        }
+    }
+
+    // Routes - Buses
+    static async getAllRoutes() {
+        try {
+            return await model.Bus.findAll({
+            attributes: ['bus_id', 'license_plate', 'capacity'], // Specify the required fields
+            });
+        } catch (error) {
+            throw new Error('Error fetching routes: ' + error.message);
+        }
+    }
+
+    static async getBusInfo(bus_id) {
+        try {
+            const busInfo = await model.Bus.findOne({
+                where: { bus_id },
+                attributes: ['bus_id', 'license_plate', 'capacity', 'status'],
+                include: [
+                    {
+                        model: model.Student,
+                        as: 'Students',
+                        attributes: ['student_id', 'name', 'class', 'avatar'],
+                        include: [
+                            {
+                                model: model.Parent,
+                                as: 'parent_id_Parents',
+                                attributes: ['address'],
+                                include: [
+                                    {
+                                        model: model.User,
+                                        as: 'user',
+                                        attributes: ['phone_number'],
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                    {
+                        model: model.Driver,
+                        as: 'driver',
+                        attributes: ['license_number'],
+                        include: [{
+                            model: model.User,
+                            as: 'user',
+                            attributes: ['name', 'phone_number'],
+                        }]
+                    },
+                    {
+                        model: model.Teacher,
+                        as: 'teacher',
+                        // attributes: ['department'],
+                        include: [{
+                            model: model.User,
+                            as: 'user',
+                            attributes: ['name', 'phone_number'],
+                        }]
+                    },
+                ],
+            });
+
+            // Map and structure the response payload
+            return {
+                bus_id: busInfo.bus_id,
+                capacity: busInfo.capacity,
+                license_plate: busInfo.license_plate,
+                status: busInfo.status,
+                driver: {
+                    license_number: busInfo.driver?.license_number || null,
+                    name: busInfo.driver?.user?.name || null,
+                    phone_number: busInfo.driver?.user?.phone_number || null
+                },
+                teacher: {
+                    name: busInfo.teacher?.user?.name || null,
+                    phone_number: busInfo.teacher?.user?.phone_number || null,
+                    department: busInfo.teacher?.department || null,
+                },
+                students: busInfo.Students.map((student) => ({
                     student_id: student.student_id,
                     name: student.name,
                     class: student.class,
-                    parent: {
-                        address: parent.address,
-                        user: parentUser
-                    }
-                };
-            })
-        );
-
-        return {
-            error: null,
-            data: {
-                teacher: {
-                    teacher_id: teacher.teacher_id,
-                    department: teacher.department,
-                    user: teacherUser
-                },
-                students: studentDetails
-            }
-        };
-    } catch (error) {
-        console.error("Error assigning teacher:", error);
-        return { error: "An error occurred while assigning the teacher", data: null };
-    }
-};
-
-export const updateStudentInfoService = async (student_id, updateData) => {
-    try {
-        // Fetch the student record
-        const student = await model.Student.findOne({
-            where: { student_id }
-        });
-
-        if (!student) {
-            return { error: "Student not found", data: null };
+                    avatar: student.avatar,
+                    address: student.parent_id_Parents[0]?.address || null, // Access first parent address safely
+                    phone_number: student.parent_id_Parents[0]?.user?.phone_number || null,
+                })),
+            };
+        } catch (error) {
+            throw new Error('Error fetching bus info: ' + error.message);
         }
+    }
 
-        // Update student information
-        const updatedStudent = await student.update(updateData);
+    static async addBus({ capacity, license_plate }) {
+        try {
+            // Check if the license plate already exists
+            const existingBus = await getExistingBusByLicensePlate(license_plate);
+            if (existingBus) {
+                return {
+                    message: 'Bus with this license plate already exists.',
+                    bus: existingBus
+                };
+            }
 
-        // If teacher_id is updated, fetch the new teacher's information
-        let teacherInfo = null;
-        if (updateData.teacher_id) {
-            const teacher = await model.Teacher.findOne({
-                where: { teacher_id: updateData.teacher_id }
+            // Create a new bus with default values for driver, teacher, location, and status
+            const newBus = await model.Bus.create({
+                capacity,
+                license_plate,
+                driver_id: null,
+                teacher_id: null,
+                current_location: null,
+                status: 'stopped'
             });
-            if (teacher) {
-                const teacherUser = await model.User.findOne({
-                    where: { user_id: teacher.user_id },
-                    attributes: ['name', 'email', 'phone_number']
-                });
-                teacherInfo = {
-                    teacher_id: teacher.teacher_id,
-                    department: teacher.department,
-                    user: teacherUser
-                };
-            }
-        }
 
-        return {
-            error: null,
-            data: {
-                student: updatedStudent.toJSON(),
-                teacher: teacherInfo
-            }
-        };
-    } catch (error) {
-        console.error("Error updating student information:", error);
-        return { error: "An error occurred while updating the student information", data: null };
+            // Fetch the newly created bus with all its details
+            return await model.Bus.findOne({
+                where: { bus_id: newBus.bus_id },
+            });
+
+        } catch (error) {
+            throw new Error('Error adding bus: ' + error.message);
+        }
     }
-};
-export const getAllCurrentJourneysWithLocationsStudentsAndTeachers = async () => {
-    try {
-        // Step 1: Fetch all current journeys (where `end_time` is null) and associated driver information
-        const currentJourneys = await model.Journey.findAll({
-            where: { end_time: { [Op.is]: null } },
-            attributes: ['journey_id', 'driver_id'],
-            include: [
-                {
-                    model: model.Driver,
-                    as: 'driver',
-                    attributes: ['current_location'],
+
+    static async deleteBuses(busIdArray) {
+        try {
+            // Delete the buses with the given IDs
+            const deletedBuses = await model.Bus.destroy({
+                where: {
+                    bus_id: busIdArray
                 }
-            ],
-        });
-
-        if (!currentJourneys || currentJourneys.length === 0) {
-            return { error: "No current journeys found", data: null };
-        }
-
-        // Step 2: Initialize an array to hold the detailed journey information
-        const journeyDetails = [];
-
-        // Step 3: Iterate over each journey and fetch related attendances
-        for (const journey of currentJourneys) {
-            const attendances = await model.Attendance.findAll({
-                where: { journey_id: journey.journey_id },
-                attributes: ['student_id', 'boarded', 'alighted']
             });
 
-            // Step 4: For each attendance, fetch the student, parent, and teacher details
-            const students = [];
-            for (const attendance of attendances) {
-                const student = await model.Student.findOne({
-                    where: { student_id: attendance.student_id },
-                    attributes: ['student_id', 'name', 'class', 'parent_id', 'teacher_id'],
-                    include: [
-                        {
-                            model: model.Parent,
-                            as: 'parent',
-                            attributes: ['parent_id'],
-                            include: [{
-                                model: model.User,
-                                as: 'user',
-                                attributes: ['name', 'email', 'phone_number']
-                            }]
-                        },
-                        {
-                            model: model.Teacher,
-                            as: 'teacher',
-                            attributes: ['teacher_id', 'department'],
-                            include: [{
-                                model: model.User,
-                                as: 'user',
-                                attributes: ['name', 'email', 'phone_number']
-                            }]
-                        }
-                    ]
-                });
+            // Return the number of deleted buses
+            return { deletedBuses };
+        } catch (error) {
+            throw new Error('Error deleting bus: ' + error.message);
+        }
+    }
 
-                // Push the detailed student information to the students array
-                students.push({
-                    student_id: student.student_id,
-                    student_name: student.name,
-                    class: student.class,
-                    parent: {
-                        parent_id: student.parent.parent_id,
-                        parent_name: student.parent.user.name,
-                        parent_email: student.parent.user.email,
-                        parent_phone_number: student.parent.user.phone_number
+    // Drivers
+    static async getAllDrivers() {
+        try {
+            const drivers = await model.Driver.findAll({
+                attributes: ['driver_id', 'license_number'],
+                include: [
+                    {
+                        model: model.User,
+                        as: 'user',
+                        attributes: ['user_id', 'name', 'phone_number', 'email'],
                     },
-                    teacher: student.teacher ? {
-                        teacher_id: student.teacher.teacher_id,
-                        teacher_name: student.teacher.user.name,
-                        teacher_email: student.teacher.user.email,
-                        teacher_phone_number: student.teacher.user.phone_number,
-                        department: student.teacher.department
-                    } : null,
-                    boarded: attendance.boarded,
-                    alighted: attendance.alighted
-                });
+                ],
+            });
+
+            return drivers.map((driver) => ({
+                driver_id: driver.driver_id,
+                license_number: driver.license_number,
+                user_id: driver.user.user_id,
+                name: driver.user.name,
+                phone_number: driver.user.phone_number,
+                email: driver.user.email,
+            }));
+        } catch (error) {
+            throw new Error('Error fetching drivers: ' + error.message);
+        }
+    }
+
+    static async updateDriverInfo(user_id, { name, phone_number, email, license_number }) {
+        try {
+            // Check if the license plate already exists
+            const existingBus = await getExistingBusByLicensePlate(license_plate);
+            if (existingBus) {
+                return {
+                    message: 'Bus with this license plate already exists.',
+                    bus: existingBus
+                };
             }
 
-            // Combine journey and student details
-            journeyDetails.push({
-                journey_id: journey.journey_id,
-                driver_id: journey.driver_id,
-                current_location: journey.driver.current_location,
-                students: students
+            // Find the driver along with the associated user
+            const driver = await model.Driver.findOne({
+                where: { user_id },
+                include: {
+                    model: model.User,
+                    as: 'user',
+                },
             });
-        }
 
-        return { error: null, data: journeyDetails };
-    } catch (error) {
-        console.error("Error fetching current journeys with locations, students, and teachers:", error);
-        return { error: "An error occurred while fetching journey details", data: null };
+            // Update the driver's license number
+            driver.license_number = license_number;
+            await driver.save();
+
+            // Update the associated user's details
+            const user = driver.user;
+            user.name = name;
+            user.phone_number = phone_number;
+            user.email = email;
+            await user.save();
+
+            // Return the updated driver and user information
+            return {
+                user_id: driver.user_id,
+                license_number: driver.license_number,
+                name: user.name,
+                phone_number: user.phone_number,
+                email: user.email,
+            };
+        } catch (error) {
+            throw new Error('Error updating driver info: ' + error.message);
+        }
     }
-};
+
+    static async addDriver({ name, phone_number, email, license_number }) {
+        try {
+            // Check if the user already exists
+            const existingUser = await findExistingUser(email, phone_number);
+            if (existingUser) {
+                return existingUser; // Return existing user info
+            }
+
+            // Fetch the role_id for 'Driver'
+            const driverRole = await model.Role.findOne({
+                where: { role_name: 'Driver' },
+                attributes: ['role_id'],
+            });
+
+            // Generate and hash the password
+            // const generatedPassword = uuidv4().slice(0, 8); // Auto gen random password
+            const generatedPassword = '123456789' // Hardcode to 123456789
+            const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+
+            // Create a new user
+            const newUser = await model.User.create({
+                role_id: driverRole.role_id,
+                name,
+                phone_number,
+                email,
+                password: hashedPassword,
+                refresh_token: null,
+            });
+
+            // Create a new driver with the user's ID
+            const newDriver = await model.Driver.create({
+                user_id: newUser.user_id,
+                license_number,
+            });
+
+            // Return the driver and user data, including the plain password
+            return {
+                driver_id: newDriver.driver_id,
+                license_number: newDriver.license_number,
+                user: {
+                    user_id: newUser.user_id,
+                    name: newUser.name,
+                    phone_number: newUser.phone_number,
+                    email: newUser.email,
+                    password: generatedPassword,
+                },
+            };
+        } catch (error) {
+            throw new Error('Error creating driver: ' + error.message);
+        }
+    }
+
+    static async deleteUsersByRole(role, userIdArray) {
+        try {
+            let deletedRoleEntries;
+
+            // Determine which role-specific entries to delete
+            switch (role) {
+                case 'parent':
+                    deletedRoleEntries = await model.Parent.destroy({ where: { user_id: userIdArray } });
+                    break;
+                case 'teacher':
+                    deletedRoleEntries = await model.Teacher.destroy({ where: { user_id: userIdArray } });
+                    break;
+                case 'driver':
+                    deletedRoleEntries = await model.Driver.destroy({ where: { user_id: userIdArray } });
+                    break;
+                default:
+            }
+
+            // Delete users based on user IDs
+            const deletedUsers = await model.User.destroy({
+                where: { user_id: userIdArray }
+            });
+
+            // Return the result of deletions
+            return {
+                deletedRoleEntries,
+                deletedUsers
+            };
+        } catch (error) {
+            throw new Error('Error deleting driver: ' + error.message);
+        }
+    }
+
+    // Parents
+    static async getAllParents() {
+        try {
+            // Fetch all parents with their associated user details
+            const parents = await model.Parent.findAll({
+                include: [
+                    {
+                        model: model.User,
+                        as: 'user', // Make sure this alias matches your model association
+                        attributes: ['user_id', 'name', 'phone_number', 'email']
+                    }
+                ]
+            });
+
+            return parents.map((parent) => ({
+                parent_id: parent.parent_id,
+                user_id: parent.user.user_id,
+                name: parent.user.name,
+                phone_number: parent.user.phone_number,
+                email: parent.user.email,
+                address: parent.address,
+                relationship: parent.relationship
+            }));
+        } catch (error) {
+            throw new Error('Error fetching parents: ' + error.message);
+        }
+    }
+
+    static async updateParentInfo(user_id, { name, phone_number, email, address, relationship }) {
+        try {
+            // Check if the user already exists
+            const existingUser = await findExistingUser(email, phone_number);
+            if (existingUser) {
+                return existingUser; // Return existing user info
+            }
+
+            // Find the parent along with the associated user
+            const parent = await model.Parent.findOne({
+                where: { user_id },
+                include: {
+                    model: model.User,
+                    as: 'user',
+                },
+            });
+
+            if (!parent) {
+                return null; // Parent not found
+            }
+
+            // Update the associated user's details
+            const user = parent.user;
+            user.name = name;
+            user.phone_number = phone_number;
+            user.email = email;
+            await user.save(); // Save updated user details
+
+            // Update the parent-specific details
+            parent.address = address;
+            parent.relationship = relationship;
+            await parent.save(); // Save updated parent details
+
+            // Return the updated information
+            return {
+                parent_id: parent.parent_id,
+                user: {
+                    user_id: user.user_id,
+                    name: user.name,
+                    phone_number: user.phone_number,
+                    email: user.email,
+                },
+                address: parent.address,
+                relationship: parent.relationship,
+            };
+        } catch (error) {
+            throw new Error('Error updating parent info: ' + error.message);
+        }
+    }
+
+    static async addParent({name, phone_number, email, address, relationship}) {
+        try {
+            // Check if the user already exists
+            const existingUser = await findExistingUser(email, phone_number);
+            if (existingUser) {
+                return existingUser; // Return existing user info
+            }
+
+            // Fetch the role_id for 'Driver'
+            const parentRole = await model.Role.findOne({
+                where: { role_name: 'Parent' },
+                attributes: ['role_id'],
+            });
+
+            // Generate and hash the password
+            // const generatedPassword = uuidv4().slice(0, 8); // Auto gen random password
+            const generatedPassword = '123456789' // Hardcode to 123456789
+            const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+
+            // Create a new user
+            const newUser = await model.User.create({
+                role_id: parentRole.role_id,
+                name,
+                phone_number,
+                email,
+                password: hashedPassword,
+                refresh_token: null,
+            });
+
+            // Create a new driver with the user's ID
+            const newParent = await model.Parent.create({
+                user_id: newUser.user_id,
+                address,
+                relationship
+            });
+
+            return {
+                parent_id: newParent.parent_id,
+                address: newParent.address,
+                relationship: newParent.relationship,
+                user: {
+                    user_id: newUser.user_id,
+                    name: newUser.name,
+                    phone_number: newUser.phone_number,
+                    email: newUser.email,
+                    password: generatedPassword
+                },
+
+            };
+
+        } catch (error) {
+            throw new Error('Error adding parent: ' + error.message);
+        }
+    }
+
+    // Teachers
+    static async getAllTeachers() {
+        try {
+            const teachers = await model.Teacher.findAll({
+                include: [
+                    {
+                        model: model.User,
+                        as: 'user', // Ensure this matches the alias in your models
+                        attributes: ['user_id', 'name', 'phone_number', 'email']
+                    }
+                ]
+            });
+
+            // Format the response payload
+            return teachers.map(teacher => ({
+                teacher_id: teacher.teacher_id,
+                department: teacher.department,
+                user_id: teacher.user.user_id,
+                name: teacher.user.name,
+                phone_number: teacher.user.phone_number,
+                email: teacher.user.email
+            }));
+        } catch (error) {
+            throw new Error('Error fetching teachers: ' + error.message);
+        }
+    }
+
+    static async updateTeacherInfo(user_id, { name, phone_number, email, department}) {
+        try {
+            // Check if the user already exists (with a different user_id)
+            const existingUser = await findExistingUser(email, phone_number);
+            if (existingUser && existingUser.user_id !== parseInt(user_id)) {
+                return { message: 'Email or phone number already exists.', user: existingUser };
+            }
+
+            // Find the teacher along with the associated user by user_id
+            const teacher = await model.Teacher.findOne({
+                where: { user_id },
+                include: {
+                    model: model.User,
+                    as: 'user'
+                }
+            });
+
+            if (!teacher) {
+                return null; // Teacher not found
+            }
+
+            // Update the associated user's details
+            const user = teacher.user;
+            user.name = name;
+            user.phone_number = phone_number;
+            user.email = email;
+            await user.save(); // Save updated user details
+
+            // Update the teacher-specific details
+            teacher.department = department;
+            await teacher.save(); // Save updated teacher details
+
+            // Return the updated information
+            return {
+                teacher_id: teacher.teacher_id,
+                department: teacher.department,
+                user: {
+                    user_id: user.user_id,
+                    name: user.name,
+                    phone_number: user.phone_number,
+                    email: user.email
+                }
+            };
+        } catch (error) {
+            throw new Error('Error updating teacher info: ' + error.message);
+        }
+    }
+
+    static async addTeacher({ name, phone_number, email, department }) {
+        try {
+            // Check if the user already exists
+            const existingUser = await findExistingUser(email, phone_number);
+            if (existingUser) {
+                return { message: 'Email or phone number already exists.', user: existingUser };
+            }
+
+            // Fetch the role_id for 'Teacher'
+            const teacherRole = await model.Role.findOne({
+                where: { role_name: 'Teacher' },
+                attributes: ['role_id']
+            });
+
+            // Generate and hash the password
+            const generatedPassword = '123456789'; // Hardcoded password
+            const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+
+            // Create a new user
+            const newUser = await model.User.create({
+                role_id: teacherRole.role_id,
+                name,
+                phone_number,
+                email,
+                password: hashedPassword,
+                refresh_token: null
+            });
+
+            // Create a new teacher with the user's ID
+            const newTeacher = await model.Teacher.create({
+                user_id: newUser.user_id,
+                department
+            });
+
+            // Return the response payload
+            return {
+                teacher_id: newTeacher.teacher_id,
+                department: newTeacher.department,
+                user: {
+                    user_id: newUser.user_id,
+                    name: newUser.name,
+                    phone_number: newUser.phone_number,
+                    email: newUser.email,
+                    password: generatedPassword
+                }
+            };
+        } catch (error) {
+            throw new Error('Error adding teacher: ' + error.message);
+        }
+    }
+
+    // Students
+    static async getStudentInfo(student_id) {
+        try {
+            // Fetch student info along with parents and their associated users
+            const student = await model.Student.findOne({
+                where: { student_id },
+                attributes: ['student_id', 'name', 'class', 'avatar', 'bus_id'],
+                include: [
+                    {
+                        model: model.Parent,
+                        as: 'parent_id_Parents', // Ensure this alias matches your model setup
+                        attributes: ['parent_id', 'address', 'relationship'],
+                        include: [
+                            {
+                                model: model.User,
+                                as: 'user',
+                                attributes: ['name', 'phone_number', 'email']
+                            }
+                        ]
+                    }
+                ]
+            });
+            // Format the response payload
+            return {
+                student_id: student.student_id,
+                name: student.name,
+                class: student.class,
+                avatar: student.avatar,
+                bus_id: student.bus_id,
+                parents: student.parent_id_Parents.map(parent => ({
+                    parent_id: parent.parent_id,
+                    name: parent.user.name,
+                    address: parent.address,
+                    phone_number: parent.user.phone_number,
+                    email: parent.user.email,
+                    relationship: parent.relationship,
+                }))
+            };
+
+        } catch (error) {
+            throw new Error('Error fetching student info: ' + error.message);
+        }
+    }
+
+    static async updateStudentInfo(student_id, { name, studentClass }) {
+        try {
+            const student = await model.Student.findOne({ where: { student_id } });
+
+            // Update the student with the new values
+            student.name = name;
+            student.class = studentClass;
+            await student.save(); // Save the updated student
+
+            // Return the updated student info
+            return {
+                student_id: student.student_id,
+                name: student.name,
+                class: student.class
+            };
+        } catch (error) {
+            throw new Error('Error updating student info: ' + error.message);
+        }
+    }
+
+    //should handle the same student_id when using uuid instead of auto increment
+    static async addStudentInfo({ name, studentClass }) {
+        try {
+            return await model.Student.create({
+                name,
+                class: studentClass,
+                bus_id: null,
+                avatar: null,
+                feature_vector: null
+            });
+        } catch (error) {
+            throw new Error('Error adding student info: ' + error.message);
+        }
+    }
+
+    static async getAllStudents() {
+        try {
+            const students = await model.Student.findAll({
+                include: [
+                    {
+                        model: model.Parent,
+                        as: 'parent_id_Parents', // Check that this alias matches your model setup
+                        attributes: ['parent_id', 'address'],
+                        include: [
+                            {
+                                model: model.User,
+                                as: 'user',
+                                attributes: ['email', 'phone_number'],
+                            }
+                        ]
+                    }
+                ]
+            });
+
+            // Format the response payload
+            return students.map(student => ({
+                student_id: student.student_id,
+                name: student.name,
+                class: student.class,
+                avatar: student.avatar,
+                parents: student.parent_id_Parents.map(parent => ({
+                    parent_id: parent.parent_id,
+                    address: parent.address,
+                    email: parent.user?.email,
+                    phone_number: parent.user?.phone_number
+                }))
+            }));
+        } catch (error) {
+            throw new Error('Error fetching students: ' + error.message);
+        }
+    }
+
+    static async updateStudentRoute(student_id, {bus_id}) {
+        try {
+            const student = await model.Student.findOne({ where: { student_id } });
+
+            if (student.bus_id === bus_id) {
+                return { error: "The new bus_id is the same as the current bus. No update performed." };
+            }
+
+            // Update the bus_id in the student record
+            student.bus_id = bus_id;
+            await student.save();
+
+            return {
+                student_id: student.student_id,
+                name: student.name,
+                class: student.class,
+                bus_id: student.bus_id
+            };
+        } catch (error) {
+            throw new Error('Error updating student route: ' + error.message);
+        }
+    }
+
+    static async deleteStudents(studentIdArray) {
+        try {
+            await model.Student_Parent.destroy({
+                where: {
+                    student_id: studentIdArray
+                }
+            });
+
+            const deletedCount = await model.Student.destroy({
+                where: {
+                    student_id: studentIdArray
+                }
+            });
+
+            return { deletedCount };
+        } catch (error) {
+            throw new Error('Error deleting students: ' + error.message);
+        }
+    }
+
+    static async getUnassignedDrivers() {
+        try {
+            // Find all drivers who don't have a bus assigned
+            const unassignedDrivers = await model.Driver.findAll({
+                where: {
+                    '$Bus.bus_id$': { [Op.is]: null } // Check if the driver has no assigned bus
+                },
+                include: [
+                    {
+                        model: model.Bus,
+                        as: 'Bus', // Ensure the alias matches your association
+                        attributes: [] // We don't need bus attributes in the result
+                    },
+                    {
+                        model: model.User,
+                        as: 'user',
+                        attributes: ['name', 'phone_number', 'email']
+                    }
+                ]
+            });
+
+            // Format the response payload
+            return unassignedDrivers.map(driver => ({
+                driver_id: driver.driver_id,
+                name: driver.user.name,
+                license_number: driver.license_number,
+                phone_number: driver.user.phone_number,
+                email: driver.user.email
+            }));
+        } catch (error) {
+            throw new Error('Error fetching unassigned drivers: ' + error.message);
+        }
+    }
+
+    static async getUnassignedTeachers() {
+        try {
+            // Find all teachers who don't have a bus assigned
+            const unassignedTeachers = await model.Teacher.findAll({
+                where: {
+                    '$Bus.bus_id$': { [Op.is]: null } // Check if the teacher has no assigned bus
+                },
+                include: [
+                    {
+                        model: model.Bus,
+                        as: 'Bus', // Ensure the alias matches your association
+                        attributes: [] // We don't need bus attributes in the result
+                    },
+                    {
+                        model: model.User,
+                        as: 'user',
+                        attributes: ['name', 'phone_number', 'email']
+                    }
+                ]
+            });
+
+            // Format the response payload
+            return unassignedTeachers.map(teacher => ({
+                teacher_id: teacher.teacher_id,
+                name: teacher.user.name,
+                department: teacher.department,
+                phone_number: teacher.user.phone_number,
+                email: teacher.user.email
+            }));
+        } catch (error) {
+            throw new Error('Error fetching unassigned teachers: ' + error.message);
+        }
+    }
+
+    static async assignDriverToBus(bus_id, driver_id) {
+        try {
+            // Update the bus with the new driver_id
+            await model.Bus.update(
+                { driver_id },
+                { where: { bus_id } }
+            );
+
+            return await model.Bus.findOne({ where: { bus_id } });
+        } catch (error) {
+            throw new Error('Error assigning driver: ' + error.message);
+        }
+    }
+
+    static async assignTeacherToBus(bus_id, teacher_id) {
+        try {
+            // Update the bus with the new teacher_id
+            await model.Bus.update(
+                { teacher_id },
+                { where: { bus_id } }
+            );
+
+            return await model.Bus.findOne({ where: { bus_id } });
+        } catch (error) {
+            throw new Error('Error assigning teacher: ' + error.message);
+        }
+    }
+    static async getStudentsWithoutParents() {
+        try {
+            // Query to find students who are not in the Student_Parent table
+            return await model.Student.findAll({
+                include: {
+                    model: model.Student_Parent,
+                    as: 'Student_Parents', // Ensure this alias matches your association
+                    required: false, // Left outer join to include students without parents
+                },
+                where: {
+                    '$Student_Parents.parent_id$': { [Op.is]: null } // Filter students without parents
+                },
+                attributes: ['student_id', 'name', 'class', 'bus_id', 'avatar']
+            });
+
+        } catch (error) {
+            throw new Error('Error fetching unassigned students: ' + error.message);
+        }
+    }
+
+    static async getStudentsWithoutBus() {
+        try {
+            return await model.Student.findAll({
+                where: {
+                    bus_id: { [Op.is]: null } // Students with no bus assigned
+                },
+                attributes: ['student_id', 'name', 'class', 'avatar']
+            });
+
+        } catch (error) {
+            throw new Error('Error fetching students without a bus: ' + error.message);
+        }
+    }
+    static async assignStudentsToParents(student_ids, parent_id) {
+        try {
+            const assignments = student_ids.map(student_id => ({
+                student_id,
+                parent_id
+            }));
+
+            await model.Student_Parent.bulkCreate(assignments, { ignoreDuplicates: true });
+
+            return { assignedStudents: student_ids, parent_id };
+        } catch (error) {
+            throw new Error('Error assigning students to parent: ' + error.message);
+        }
+    }
+
+    // Assign students to a bus (PATCH)
+    static async assignStudentsToBus(student_ids, bus_id) {
+        try {
+            await model.Student.update(
+                { bus_id },
+                {
+                    where: {
+                        student_id: student_ids
+                    }
+                }
+            );
+
+            return { assignedStudents: student_ids, bus_id };
+        } catch (error) {
+            throw new Error('Error assigning students to bus: ' + error.message);
+        }
+    }
+}
+
