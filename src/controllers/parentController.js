@@ -188,6 +188,7 @@ export default class ParentController {
     static async extractFeature(req, res) {
         const parent_id = req.params.parent_id;
         const files = req.files;
+        const imageUrls = [];
 
         if (!files || files.length !== 5) {
             return responseData(res, 'Please upload exactly 5 images.', null, 400);
@@ -195,39 +196,26 @@ export default class ParentController {
 
         try {
             // Lấy thêm thông tin của học sinh từ database
-            const { student_id, name } = await getStudentIdByParentId(parent_id);
+            const {student_id, name} = await getStudentIdByParentId(parent_id);
 
-            // if (currentAvatarUrl) {
-            //     const oldFileName = decodeURIComponent(currentAvatarUrl.split('/').pop().split('?')[0]);
-            //     console.log(`Attempting to delete old file: ${oldFileName} from Azure`);
-            //     await deleteFromAzure(oldFileName, 'avatars');
-            // }
-            //
-            // // Tạo tên file với định dạng mới
-            // const projectCode = 'STUDENT_TRACKING';
-            // const entityType = 'avatar';
-            // const fileName = `${projectCode}-${entityType}-parentId=${parent_id}-studentId=${student_id}-${Date.now()}-${file.originalname}`;
-            //
-            // // Tải ảnh lên Azure và lấy URL
-            // const fileUrl = await uploadAvatarToAzure(file.buffer, fileName);
-
-        // Create folder structure and initialize
+            // Tạo subFolder theo student_id
             const containerName = 'biometric';
-            const folderName = `student_id=${student_id}`;
+            const subFolder = `student_id=${student_id}`;
             const projectCode = 'STUDENT_TRACKING';
             const entityType = 'feature-vector';
             const imageUrls = [];
 
-            // Upload each file to Azure and collect URLs
+            // Upload từng file vào subFolder
             for (const file of files) {
-                const fileName = `${projectCode}-${entityType}-${folderName}-${Date.now()}-${file.originalname}`;
-                const fileUrl = await uploadBiometricToAzure(file.buffer, fileName, containerName);
+                const fileName = `${projectCode}-${entityType}-${Date.now()}-${file.originalname}`;
+                const fileUrl = await uploadBiometricToAzure(file.buffer, fileName, containerName, subFolder);
                 imageUrls.push(fileUrl);
             }
+            console.log(`All uploaded files:`, imageUrls);
 
-             // --- ADDITION: Transfer the file URL to the Flask API ---
+            // --- ADDITION: Transfer the file URL to the Flask API ---
             const flaskUrl = 'http://localhost:5000/extract-vector'; // Replace with Flask API URL
-            const flaskResponse = await axios.post(flaskUrl, { imageUrls  });
+            const flaskResponse = await axios.post(flaskUrl, {imageUrls});
 
             if (flaskResponse.status !== 200) {
                 throw new Error(`Flask API Error: ${flaskResponse.data.message || 'Unknown error'}`);
@@ -249,18 +237,18 @@ export default class ParentController {
                 }
             }, 200);
 
-         } catch (error) {
-            console.error('Error in extractFeature:', error.message);
-
-            // Clean up uploaded files in case of error
-            for (const fileUrl of imageUrls || []) {
-                const fileName = decodeURIComponent(fileUrl.split('/').pop().split('?')[0]);
-                await deleteFromAzure(fileName, 'biometric');
+        } catch (error) {
+            // Dọn dẹp file đã upload trong trường hợp lỗi (NHƯNG PHẦN NÀY CÒN BUG CHƯA DÙNG ĐƯỢC DO CHỈ ĐANG XOÁ ĐƯỢC Ở THƯ MỤC PARENT CHƯA CÓ XOÁ ĐƯỢC TRONG SUBFOLDER
+            for (const fileUrl of imageUrls) {
+                try {
+                    const fileName = decodeURIComponent(fileUrl.split('/').pop());
+                    await deleteFromAzure(fileName, 'biometric');
+                } catch (deleteError) {
+                }
             }
 
             return responseData(res, 'Error extracting feature vectors.', error.message, 500);
         }
     }
-
 }
 

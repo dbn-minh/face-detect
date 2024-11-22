@@ -62,19 +62,22 @@ export const deleteFromAzure = async (fileName, containerName ) => {
     }
 };
 
-export const uploadBiometricToAzure = async (fileBuffer, fileName, containerName = 'biometric') => {
+export const uploadBiometricToAzure = async (fileBuffer, fileName, containerName = 'biometric', subFolder = '') => {
     const containerClient = blobServiceClient.getContainerClient(containerName);
 
-    // Ensure the container exists
     await containerClient.createIfNotExists({ access: "container" });
 
-    const blockBlobClient = containerClient.getBlockBlobClient(fileName);
+    // Thêm subFolder vào đường dẫn nếu có
+    const blobName = subFolder ? `${subFolder}/${fileName}` : fileName;
 
-    // Upload file buffer to blob
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+    // Upload file buffer lên blob
     await blockBlobClient.uploadData(fileBuffer, {
         blobHTTPHeaders: { blobContentType: "image/jpeg" }
     });
 
-    // Return the blob URL
+    // Trả về URL của blob mà không cần thêm SAS token
     return blockBlobClient.url;
 };
+
