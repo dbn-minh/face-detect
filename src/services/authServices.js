@@ -1,174 +1,345 @@
 import bcrypt from "bcrypt";
 import initModels from "../models/init-models.js";
 import sequelize from "../config/database.js";
+import crypto from "crypto";
+import { Op } from 'sequelize'; // Import Op từ Sequelize
+import jwt from "jsonwebtoken";
+
 import {
   checkRefToken,
   checkToken,
   createRefToken,
   createToken,
   decodeToken,
+  setCookie
 } from "../config/jwt.js";
+import {
+	sendPasswordResetEmail,
+	sendResetSuccessEmail,
+	sendVerificationEmail,
+	sendWelcomeEmail,
+} from "../mailtrap/emails.js";
 import Joi from "joi";
 
 let model = initModels(sequelize);
 
-export const signupService = async (
-  role_id,
-  name,
-  phone_number,
-  email,
-  password,
-  other,
-  relationship
-) => {
-  // Define Joi validation schema
-  const schema = Joi.object({
-    role_id: Joi.number().integer().min(1).max(3).required(),
-
-    name: Joi.string().min(3).max(50).required(),
-
-    phone_number: Joi.string()
-      .pattern(/^[0-9]+$/)
-      .min(10)
-      .max(15)
-      .required(),
-
+export const signupService = async (email, password, role_id, name, phone_number, other, relationship) => {
+  // Partial schema for initial email and password validation
+  const initialSchema = Joi.object({
     email: Joi.string().email().required(),
     password: Joi.string()
       .min(8)
       .pattern(new RegExp("^(?=.*[A-Z])(?=.*[!@#$&*])(?=.*[0-9])"))
       .required()
       .messages({
-        "string.pattern.base":
-          "Password must contain at least 1 uppercase letter, 1 special character, and 1 number.",
-      }),
-
-    other: Joi.alternatives().conditional("role_id", {
-      switch: [
-        {
-          is: 1, // Parent
-          then: Joi.string()
-            .required()
-            .messages({
-              "any.required": "Address is required for Parent role",
-            }),
-        },
-        {
-          is: 2, // Driver
-          then: Joi.string()
-            .required()
-            .messages({
-              "any.required": "License number is required for Driver role",
-            }),
-        },
-        {
-          is: 3, // Teacher
-          then: Joi.string()
-            .required()
-            .messages({
-              "any.required": "Department is required for Teacher role",
-            }),
-        },
-      ],
-      otherwise: Joi.forbidden(), // prohibit to enter tha value which is out range from 1 to 3
-    }),
-
-    relationship: Joi.string()
-      .valid("Father", "Mother", "Other")
-      .when("role_id", {
-        is: 1, // only validate relationship when role_id is 1 (Parent)
-        then: Joi.required(),
-        otherwise: Joi.forbidden(), // prohibit to enter the value which is not 1(parent)
-      }),
+        "string.pattern.base": "Password must contain at least 1 uppercase letter, 1 special character, and 1 number.",
+      })
   });
 
-  // Validate the input
-  const { error } = schema.validate({
-    role_id,
-    name,
-    phone_number,
-    email,
-    password,
-    other,
-    relationship,
-  });
+  // Validate email and password first
+  const { error: initialError } = initialSchema.validate({ email, password });
 
-  if (error) {
-    return { error: error.details[0].message, status: 400 };
+  if (initialError) {
+    return { error: initialError.details[0].message, status: 400 };
   }
-  try {
-    let check_user = await model.User.findOne({
-      where: { email },
-    });
 
-    if (check_user) {
-      return { error: "Email exists, use another email", status: 400 };
+  try {
+    // Check if a user with the provided email already exists
+    let existingUser = await model.User.findOne({ where: { email } });
+    const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    if (existingUser) {
+      // If the account exists but is not verified
+      if (!existingUser.isVerified) {
+        existingUser.password = hashedPassword;
+        existingUser.verificationToken = verificationToken;
+        existingUser.verificationTokenExpiresAt = Date.now() + 24 * 60 * 60 * 1000;
+        await existingUser.save();
+
+        // Resend verification email
+        await sendVerificationEmail(existingUser.email, verificationToken);
+
+        return {
+          status: 200,
+          error: "Account exists but is not verified. A verification email has been resent.",
+        };
+      } else {
+        // Account is already verified
+        return {
+          status: 400,
+          error: "Email is already registered and verified.",
+        };
+      }
     }
 
-    let hashedPassword = bcrypt.hashSync(password, 10);
+    // If email does not exist, validate remaining fields for new account creation
+    const fullSchema = Joi.object({
+      role_id: Joi.number().integer().min(1).max(3).required(),
+      name: Joi.string().min(3).max(50).required(),
+      phone_number: Joi.string().pattern(/^[0-9]+$/).min(10).max(15).required(),
+      email: Joi.string().email().required(),
+      password: Joi.string()
+        .min(8)
+        .pattern(new RegExp("^(?=.*[A-Z])(?=.*[!@#$&*])(?=.*[0-9])"))
+        .required(),
+      other: Joi.alternatives().conditional("role_id", {
+        switch: [
+          { is: 1, then: Joi.string().required().messages({ "any.required": "Address is required for Parent role" }) },
+          { is: 2, then: Joi.string().required().messages({ "any.required": "License number is required for Driver role" }) },
+          { is: 3, then: Joi.string().required().messages({ "any.required": "Department is required for Teacher role" }) },
+        ],
+        otherwise: Joi.forbidden(),
+      }),
+      relationship: Joi.string()
+        .valid("Father", "Mother", "Other")
+        .when("role_id", { is: 1, then: Joi.required(), otherwise: Joi.forbidden() }),
+    });
+
+    const { error: fullError } = fullSchema.validate({ role_id, name, phone_number, email, password, other, relationship });
+
+    if (fullError) {
+      return { error: fullError.details[0].message, status: 400 };
+    }
+
+    // Create new account if validation passes
     let newUser = await model.User.create({
       role_id,
       name,
       phone_number,
       email,
       password: hashedPassword,
+      verificationToken,
+      verificationTokenExpiresAt: Date.now() + 24 * 60 * 60 * 1000,
     });
 
-    let roleDetails = null;
-
+    // Create associated record based on role_id
     switch (role_id) {
       case 1: // Parent
-        const parent = await model.Parent.create({
-          address: other,
-          relationship: relationship,
-          user_id: newUser.user_id,
-        });
-        roleDetails = {
-          role: "Parent",
-          address: parent.address,
-          relationship: parent.relationship
-        };
+        await model.Parent.create({ address: other, relationship, user_id: newUser.user_id });
         break;
       case 2: // Driver
-        const driver = await model.Driver.create({
-          license_number: other,
-          user_id: newUser.user_id,
-        });
-        roleDetails = {
-          role: "Driver",
-          license_number: driver.license_number
-        };
+        await model.Driver.create({ license_number: other, user_id: newUser.user_id });
         break;
       case 3: // Teacher
-        const teacher = await model.Teacher.create({
-          department: other,
-          user_id: newUser.user_id,
-        });
-        roleDetails = {
-          role: "Teacher",
-          department: teacher.department
-        };
+        await model.Teacher.create({ department: other, user_id: newUser.user_id });
         break;
     }
 
-    return {
-      data: {
-        user_id: newUser.user_id,
-        role_id: newUser.role_id,
-        name: newUser.name,
-        phone_number: newUser.phone_number,
-        email: newUser.email,
-        role_details: roleDetails
-      },
-      status: 200
-    };
+    // Send verification email
+    await sendVerificationEmail(newUser.email, verificationToken);
+
+    return { data: newUser, status: 200, message: "Account created successfully. A verification email has been sent." };
+
   } catch (error) {
     console.error(error);
     return { error: "Error creating user", status: 500 };
   }
 };
 
-export const loginService = async (email, password) => {
+export const resetVerificationTokenService = async (email) => {
+  try {
+    // Find the user with the specified email and unverified status
+    const user = await model.User.findOne({
+      where: {
+        email,
+        isVerified: false,
+      },
+    });
+
+    if (!user) {
+      return { status: 404, error: "User not found or already verified" };
+    }
+
+    // Generate a new verification token and set expiration time
+    const newVerificationToken = Math.floor(100000 + Math.random() * 900000).toString();
+    user.verificationToken = newVerificationToken;
+    user.verificationTokenExpiresAt = Date.now() + 24 * 60 * 60 * 1000; // Expires in 24 hours
+
+    // Save the updated user with the new token
+    await user.save();
+
+    // Resend verification email with the new token
+    await sendVerificationEmail(user.email, newVerificationToken);
+
+    return {
+      data: newVerificationToken,
+      status: 200,
+      message: "Verification token has been reset and email sent",
+    };
+  } catch (error) {
+    console.error(error);
+    return { error: "Error resetting verification token", status: 500 };
+  }
+};
+
+export const forgetPasswordService = async (email) => {
+  try {
+    // Find the user with the specified email and unverified status
+    const user = await model.User.findOne({
+      where: {
+        email,
+        isVerified: true,
+      },
+    });
+
+    if (!user) {
+      return { status: 404, error: "email not found" };
+    }
+
+    // Generate a new verification token and set expiration time
+    const newVerificationToken = Math.floor(100000 + Math.random() * 900000).toString();
+    user.verificationToken = newVerificationToken;
+    user.verificationTokenExpiresAt = Date.now() +   60 * 1000; // Expires in 60s
+
+    // Save the updated user with the new token
+    await user.save();
+
+    // Resend verification email with the new token
+    await sendPasswordResetEmail(user.email, newVerificationToken);
+
+    return {
+      data: newVerificationToken,
+      status: 200,
+      message: "Token of resetting password is sent through email ",
+    };
+  } catch (error) {
+    console.error(error);
+    return { error: "Error sending token for resetting password", status: 500 };
+  }
+};
+
+export const verifyResetOrVerificationTokenService = async (code) => {
+	try {
+		const user = await model.User.findOne({
+			where: {
+				verificationToken: code,
+				verificationTokenExpiresAt: { [Op.gt]: new Date() },
+			},
+		});
+
+		if (!user) {
+			return { status: 400, error: "Invalid or expired verification code" };
+		}
+
+		// identify token valid, response front-end side to continue next step of resetting password
+
+    return {
+      status: 200,
+      message: "Verification code is valid.",
+    };
+	} catch (error) {
+		console.error(error);
+    return { error: "Error verifying code", status: 500 };
+
+	}
+};
+
+
+export const resetPasswordService = async (code, newPassword) => {
+  try {
+    // Update Joi schema for password validation
+    const schema = Joi.object({
+      newPassword: Joi.string()
+        .min(8)
+        .pattern(new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?\":{}|<>])[A-Za-z0-9!@#$%^&*(),.?\":{}|<>]{8,}$"))
+        .required()
+        .messages({
+          "string.min": "Password must be at least 8 characters long.",
+          "string.pattern.base": "Password must include uppercase, lowercase, a number, and a special character.",
+        }),
+    });
+
+    // Validate new password
+    const { error } = schema.validate({ newPassword });
+    if (error) {
+      return {
+        status: 400,
+        message: error.details[0].message,
+      };
+    }
+
+    // Find the user by verification token
+    const user = await model.User.findOne({
+      where: {
+        verificationToken: code,
+        verificationTokenExpiresAt: { [Op.gt]: new Date() },
+      },
+    });
+
+    if (!user) {
+      return {
+        status: 400,
+        message: "Invalid or expired verification code",
+      };
+    }
+
+    // Encrypt the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password and reset token fields
+    user.password = hashedPassword;
+    user.verificationToken = null;
+    user.verificationTokenExpiresAt = null;
+    await user.save();
+
+    await sendResetSuccessEmail(user.email);
+    return {
+      status: 200,
+      message: "Password has been reset successfully.",
+    };
+  } catch (error) {
+    console.error(error);
+    return { error: "Error resetting password", status: 500 };
+  }
+};
+
+
+
+
+
+export const verifyEmailService = async (code, res) => {
+	try {
+		const user = await model.User.findOne({
+			where: {
+        verificationToken: code,
+        verificationTokenExpiresAt: { [Op.gt]: new Date() }, 
+      },
+		});
+    console.log(user);
+
+		if (!user) {
+			return res.status(400).json({ success: false, message: "Invalid or expired verification code" });
+		}
+    
+
+    let key = new Date().getTime();
+    let token = createToken({ user_id: user.user_id, key });
+    let ref_token = createRefToken({ user_id: user.user_id, key });
+
+      user.refresh_token = ref_token
+      user.lastLogin = new Date();
+      user.isVerified = true;
+      user.verificationToken = null;
+      user.verificationTokenExpiresAt = null;
+      await user.save();  
+
+      setCookie(res, token);
+
+
+		await sendWelcomeEmail(user.email, user.name);
+    return {
+      data: token,
+      status: 200,
+      message: "Email verified successfully",
+    };
+	} catch (error) {
+    console.error(error);
+    return { error: "error in verifyEmail", status: 500 };
+};
+}
+
+export const loginService = async (res, email, password) => {
 
   const schema = Joi.object({
     email: Joi.string().email().required().messages({
@@ -187,27 +358,23 @@ export const loginService = async (email, password) => {
   if (error) {
     return { error: error.details[0].message, status: 400 };
   }
-  try {
-    let check_user = await model.User.findOne({
+  try {   
+    let user = await model.User.findOne({
       where: { email },
     });
 
-    if (!check_user) {
+    if (!user) {
       return { error: "Incorrect email or password", status: 400 };
     }
 
-
-    if (check_user && bcrypt.compareSync(password, check_user.password)) {
+    if (user && bcrypt.compareSync(password, user.password)) {
       let key = new Date().getTime();
-      let token = createToken({ user_id: check_user.user_id, key });
-      let ref_token = createRefToken({ user_id: check_user.user_id, key });
-
-      await model.User.update(
-        { refresh_token: ref_token },
-        {
-          where: { user_id: check_user.user_id },
-        }
-      );
+      let token = createToken({ user_id: user.user_id, key });
+      let ref_token = createRefToken({ user_id: user.user_id, key });
+      user.refresh_token = ref_token
+      user.lastLogin = new Date();
+      await user.save();  
+      setCookie(res, token);
 
       return { data: token, status: 200 };
     } else {
@@ -219,9 +386,14 @@ export const loginService = async (email, password) => {
   }
 };
 
-export const logoutService = async (token) => {
+export const logoutService = async (req, res) => {
   try {
-    let access_token = decodeToken(token);
+    // Check if token exists
+    if (!req.cookies || !req.cookies.token) {
+      return { error: "No token found", status: 400 };
+    }
+    // let access_token = decodeToken(token);
+    let access_token = decodeToken(req.cookies.token);
 
     // Check if the token was decoded succe                     ssfully
     if (!access_token || !access_token.data || !access_token.data.user_id) {
@@ -238,7 +410,7 @@ export const logoutService = async (token) => {
         where: { user_id: get_user.user_id },
       }
     );
-
+    res.clearCookie("token");
     return { message: "Logout successful", status: 200 };
   } catch (error) {
     console.error(error);
@@ -246,14 +418,18 @@ export const logoutService = async (token) => {
   }
 };
 
-export const refreshTokenService = async (token) => {
+
+export const refreshTokenService = async (req, res) => {
   try {
-    let check = checkToken(token);
+    if (!req.cookies || !req.cookies.token) {
+      return { error: "No token found", status: 400 };
+    }
+    let check = checkToken(req.cookies.token);
     if (check && check.name !== "TokenExpiredError") {
       return { error: "Invalid token", status: 401 };
     }
 
-    let access_token = decodeToken(token);
+    let access_token = decodeToken(req.cookies.token);
 
     let get_user = await model.User.findOne({
       where: { user_id: access_token.data.user_id },
@@ -261,11 +437,17 @@ export const refreshTokenService = async (token) => {
 
     let check_ref = checkRefToken(get_user.refresh_token);
     if (check_ref) {
-      return { error: "Invalid refresh token", status: 401 };
+      get_user.refresh_token = "";
+      await get_user.save();
+      res.clearCookie("token");
+      return { error: "Invalid or expired refresh token", status: 401 };
     }
 
     let ref_token = decodeToken(get_user.refresh_token);
     if (access_token.data.key !== ref_token.data.key) {
+      get_user.refresh_token = "";
+      await get_user.save();
+      res.clearCookie("token");
       return { error: "Invalid token key", status: 401 };
     }
 
@@ -273,6 +455,7 @@ export const refreshTokenService = async (token) => {
       user_id: get_user.user_id,
       key: ref_token.data.key,
     });
+    setCookie(res, new_token);
 
     return { data: new_token, status: 200 };
   } catch (error) {
@@ -281,11 +464,80 @@ export const refreshTokenService = async (token) => {
   }
 };
 
+
+export const changePasswordService = async (id, oldPassword, newPassword) => {
+  try {
+    // Joi schema for old password and new password validation
+    const schema = Joi.object({
+      oldPassword: Joi.string()
+        .min(8)
+        .required()
+        .messages({
+          "string.min": "Old password must be at least 8 characters long.",
+          "any.required": "Old password is required.",
+        }),
+      newPassword: Joi.string()
+        .min(8)
+        .pattern(new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?\":{}|<>])[A-Za-z0-9!@#$%^&*(),.?\":{}|<>]{8,}$"))
+        .required()
+        .messages({
+          "string.min": "Password must be at least 8 characters long.",
+          "string.pattern.base": "Password must include uppercase, lowercase, a number, and a special character.",
+          "any.required": "New password is required.",
+        }),
+    });
+
+    // Validate both old and new passwords
+    const { error } = schema.validate({ oldPassword, newPassword });
+    if (error) {
+      return {
+        status: 400,
+        message: error.details[0].message,
+      };
+    }
+
+    // Find the user by ID
+    const user = await model.User.findOne({ where: { user_id: id } });
+    if (!user) {
+      return {
+        status: 404,
+        error: "User not found",
+      };
+    }
+
+    // Verify old password
+    const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
+    console.log(isOldPasswordValid);
+    if (!isOldPasswordValid) {
+      return {
+        status: 400,
+        error: "Old password is incorrect",
+      };
+    }
+
+    // Hash and update new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    return {
+      status: 200,
+      message: "Password has been changed successfully.",
+    };
+  } catch (error) {
+    console.error(error);
+    return { error: "Error changing password", status: 500 };
+  }
+};
+
+
 // ---------------------------- Minh test upload avatar-----------------------------
 
 import axios from "axios";
 import qs from "qs";
 import dotenv from "dotenv";
+import { error } from "console";
+import { get } from "http";
 
 // Load environment variables from .env file
 dotenv.config();
