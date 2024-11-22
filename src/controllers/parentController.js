@@ -1,6 +1,9 @@
 import {responseData} from "../config/response.js";
 import * as service from '../services/parentServices.js';
-import {uploadAvatarToOneDrive} from "../services/studentService.js";
+import {getStudentIdByParentId, saveAvatarPathToDatabase, saveFeatureVectorToDatabase} from "../services/studentService.js";
+import {deleteFromAzure, uploadAvatarToAzure} from "../config/azureService.js";
+import axios from 'axios'; // Use ES Module import
+
 
 export default class ParentController {
     static constructStudentResponse = (students, notifications) => {
@@ -120,27 +123,49 @@ export default class ParentController {
     }
 
     // Controller to upload avatar to OneDrive and update DB
-    static async uploadStudentAvatar(req, res){
-        const parent_id = req.params.parent_id;  // Get student ID from URL params
-        const filePath = req.file.path;  // Temporary path where file is stored
-        const originalFileName = req.file.originalname;  // Get original file name
+    static async uploadStudentAvatar(req, res) {
+        const parent_id = req.params.parent_id;
+        const file = req.file;
 
-        // Generate a unique file name using student ID and timestamp
-        const timestamp = Date.now();
-        const extension = originalFileName.split('.').pop();  // Get file extension
-        const fileName = `avatars/${parent_id}-${timestamp}.${extension}`;
-
+        if (!file) {
+            return responseData(res, 'No file uploaded', null, 400);
+        }
         try {
-            // Upload the avatar to OneDrive
-            const result = await uploadAvatarToOneDrive(parent_id, filePath, fileName);
+            // Lấy thêm thông tin của học sinh từ database
+            const { student_id, name, avatar: currentAvatarUrl } = await getStudentIdByParentId(parent_id);
 
-            // Respond with the success message and avatar URL
-            return res.status(200).json({ message: 'Success', data: result });
+            if (currentAvatarUrl) {
+                const oldFileName = decodeURIComponent(currentAvatarUrl.split('/').pop().split('?')[0]);
+                console.log(`Attempting to delete old file: ${oldFileName} from Azure`);
+                await deleteFromAzure(oldFileName, 'avatars');
+            }
+
+            // Tạo tên file với định dạng mới
+            const projectCode = 'STUDENT_TRACKING';
+            const entityType = 'avatar';
+            const fileName = `${projectCode}-${entityType}-parentId=${parent_id}-studentId=${student_id}-${Date.now()}-${file.originalname}`;
+
+            // Tải ảnh lên Azure và lấy URL
+            const fileUrl = await uploadAvatarToAzure(file.buffer, fileName);
+
+            // Lưu đường dẫn URL vào cơ sở dữ liệu
+            await saveAvatarPathToDatabase(parent_id, fileUrl);
+
+            // Trả về thông tin học sinh và URL ảnh
+            return responseData(res, 'Avatar uploaded successfully', {
+                student: {
+                    student_id: student_id,
+                    name: name,
+                    avatarUrl: fileUrl
+                }
+            }, 200);
+
         } catch (error) {
-            // Handle any errors that occur
-            return res.status(500).json({ message: 'Error', error: error.message });
+            return responseData(res, 'Error uploading avatar', error.message, 500);
         }
     }
+
+
     static async writeFeedback(req, res){
         const { parent_id } = req.params;
         const { title, content } = req.body;
@@ -154,5 +179,61 @@ export default class ParentController {
             return responseData(res, 'Fail', error.message, 500);
         }
     }
+
+    // Controller to upload avatar to OneDrive and update DB
+    static async extractFeature(req, res) {
+        const parent_id = req.params.parent_id;
+        const file = req.file;
+
+        if (!file) {
+            return responseData(res, 'No file uploaded', null, 400);
+        }
+        // try {
+            // Lấy thêm thông tin của học sinh từ database
+            const { student_id, name, avatar: currentAvatarUrl } = await getStudentIdByParentId(parent_id);
+
+            if (currentAvatarUrl) {
+                const oldFileName = decodeURIComponent(currentAvatarUrl.split('/').pop().split('?')[0]);
+                console.log(`Attempting to delete old file: ${oldFileName} from Azure`);
+                await deleteFromAzure(oldFileName, 'avatars');
+            }
+
+            // Tạo tên file với định dạng mới
+            const projectCode = 'STUDENT_TRACKING';
+            const entityType = 'avatar';
+            const fileName = `${projectCode}-${entityType}-parentId=${parent_id}-studentId=${student_id}-${Date.now()}-${file.originalname}`;
+
+            // Tải ảnh lên Azure và lấy URL
+            const fileUrl = await uploadAvatarToAzure(file.buffer, fileName);
+
+
+             // --- ADDITION: Transfer the file URL to the Flask API ---
+            const flaskUrl = 'http://localhost:5000/extract-vector'; // Replace with Flask API URL
+            const flaskResponse = await axios.post(flaskUrl, { fileUrl });
+
+            if (flaskResponse.status !== 200) {
+                throw new Error(`Flask API Error: ${flaskResponse.data.message || 'Unknown error'}`);
+            }
+
+            const featureVector = flaskResponse.data.featureVector;
+            // Lưu đường dẫn URL vào cơ sở dữ liệu
+            await saveFeatureVectorToDatabase(parent_id, featureVector);
+
+            console.log(featureVector)
+
+            // Trả về thông tin học sinh và URL ảnh
+            return responseData(res, 'Avatar uploaded successfully', {
+                student: {
+                    student_id: student_id,
+                    name: name,
+                    feature_vector: featureVector
+                }
+            }, 200);
+
+        // } catch (error) {
+        //     return responseData(res, 'Error uploading avatar', error.message, 500);
+        // }
+    }
+
 }
 
