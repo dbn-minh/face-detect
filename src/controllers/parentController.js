@@ -191,7 +191,7 @@ export default class ParentController {
         const imageUrls = [];
 
         if (!files || files.length !== 5) {
-            return responseData(res, 'Please upload exactly 5 images.', null, 400);
+            return responseData(res, 'Please upload exactly 3 images.', null, 400);
         }
 
         try {
@@ -221,7 +221,9 @@ export default class ParentController {
                 throw new Error(`Flask API Error: ${flaskResponse.data.message || 'Unknown error'}`);
             }
 
-            const featureVectors = flaskResponse.data.featureVectors;
+            const featureVectors = flaskResponse.data.meanFeatureVector;
+
+
             // Lưu đường dẫn URL vào cơ sở dữ liệu
             await saveFeatureVectorToDatabase(student_id, featureVectors);
 

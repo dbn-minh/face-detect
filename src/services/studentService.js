@@ -45,13 +45,12 @@ export const saveAvatarPathToDatabase = async (parent_id, fileUrl) => {
     }
 };
 
-export const saveFeatureVectorToDatabase = async (parent_id, feature_vectors) => {
+export const saveFeatureVectorToDatabase = async (student_id, feature_vectors) => {
     try {
-        const student_id = await getStudentIdByParentId(parent_id);
 
         await model.Student.update(
-            { feature_vector: JSON.stringify(feature_vectors) }, // Store as JSON string
-            { where: ( student_id ) }
+            { feature_vector: feature_vectors }, 
+            { where: {student_id: student_id} }
         );
 
         return { message: 'Avatar path saved successfully',  feature_vectors};
