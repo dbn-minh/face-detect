@@ -1,7 +1,13 @@
 import {responseData} from "../config/response.js";
 import * as service from '../services/parentServices.js';
-import {getStudentIdByParentId, saveAvatarPathToDatabase} from "../services/studentService.js";
-import {deleteFromAzure, uploadAvatarToAzure} from "../config/azureService.js";
+import {getStudentIdByParentId, saveAvatarPathToDatabase, saveFeatureVectorToDatabase} from "../services/studentService.js";
+import {
+    deleteFromAzure,
+    uploadAvatarToAzure,
+    uploadBiometricToAzure
+} from "../config/azureService.js";
+import axios from 'axios'; // Use ES Module import
+
 
 export default class ParentController {
     static constructStudentResponse = (students, notifications) => {
@@ -175,6 +181,73 @@ export default class ParentController {
             return responseData(res, 'Success', feedback, 201);
         } catch (error) {
             return responseData(res, 'Fail', error.message, 500);
+        }
+    }
+
+    // Controller to upload avatar to OneDrive and update DB
+    static async extractFeature(req, res) {
+        const parent_id = req.params.parent_id;
+        const files = req.files;
+        const imageUrls = [];
+
+        if (!files || files.length !== 5) {
+            return responseData(res, 'Please upload exactly 5 images.', null, 400);
+        }
+
+        try {
+            // Lấy thêm thông tin của học sinh từ database
+            const {student_id, name} = await getStudentIdByParentId(parent_id);
+
+            // Tạo subFolder theo student_id
+            const containerName = 'biometric';
+            const subFolder = `student_id=${student_id}`;
+            const projectCode = 'STUDENT_TRACKING';
+            const entityType = 'feature-vector';
+            const imageUrls = [];
+
+            // Upload từng file vào subFolder
+            for (const file of files) {
+                const fileName = `${projectCode}-${entityType}-${Date.now()}-${file.originalname}`;
+                const fileUrl = await uploadBiometricToAzure(file.buffer, fileName, containerName, subFolder);
+                imageUrls.push(fileUrl);
+            }
+            console.log(`All uploaded files:`, imageUrls);
+
+            // --- ADDITION: Transfer the file URL to the Flask API ---
+            const flaskUrl = 'http://localhost:5000/extract-vector'; // Replace with Flask API URL
+            const flaskResponse = await axios.post(flaskUrl, {imageUrls});
+
+            if (flaskResponse.status !== 200) {
+                throw new Error(`Flask API Error: ${flaskResponse.data.message || 'Unknown error'}`);
+            }
+
+            const featureVectors = flaskResponse.data.featureVectors;
+            // Lưu đường dẫn URL vào cơ sở dữ liệu
+            await saveFeatureVectorToDatabase(student_id, featureVectors);
+
+            console.log(featureVectors)
+
+            // Trả về thông tin học sinh và URL ảnh
+            return responseData(res, 'Avatar uploaded successfully', {
+                student: {
+                    student_id: student_id,
+                    name: name,
+                    feature_vector: featureVectors,
+                    image_urls: imageUrls
+                }
+            }, 200);
+
+        } catch (error) {
+            // Dọn dẹp file đã upload trong trường hợp lỗi (NHƯNG PHẦN NÀY CÒN BUG CHƯA DÙNG ĐƯỢC DO CHỈ ĐANG XOÁ ĐƯỢC Ở THƯ MỤC PARENT CHƯA CÓ XOÁ ĐƯỢC TRONG SUBFOLDER
+            for (const fileUrl of imageUrls) {
+                try {
+                    const fileName = decodeURIComponent(fileUrl.split('/').pop());
+                    await deleteFromAzure(fileName, 'biometric');
+                } catch (deleteError) {
+                }
+            }
+
+            return responseData(res, 'Error extracting feature vectors.', error.message, 500);
         }
     }
 }

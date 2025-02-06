@@ -25,6 +25,16 @@ export default class Feedback extends Model {
     content: {
       type: DataTypes.STRING(255),
       allowNull: false
+    },
+    status: {
+      type: DataTypes.ENUM('unsolved','solved'),
+      allowNull: false,
+      defaultValue: "unsolved"
+    },
+    time_stamp: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: Sequelize.Sequelize.literal('CURRENT_TIMESTAMP')
     }
   }, {
     sequelize,

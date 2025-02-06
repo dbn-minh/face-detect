@@ -392,67 +392,81 @@ export const getValidStudentAttendances = async (teacher_id) => {
     }
 };
 
-export const createBrokenPhotoNotification = async (teacher_id, attendance_id, fileUrl, status, validStudents) => {
+export const createBrokenPhotoNotification = async (teacher_id, attendance_id, fileUrl, status, validStudents, journey_id) => {
     let fileUrlInService = fileUrl;
     try {
 
-        if (status === 'boarded') {
-            const threeHoursAgo = new Date();
-            threeHoursAgo.setHours(threeHoursAgo.getHours() - 3);
+        // if (status === 'boarded') {
+        //     const threeHoursAgo = new Date();
+        //     threeHoursAgo.setHours(threeHoursAgo.getHours() - 3);
+        //
+        //     const recentBoardedNotification = await model.Notification.findOne({
+        //         where: {
+        //             attendance_id,
+        //             status: 'common',
+        //             message: { [Op.like]: '%boarded%' },
+        //             time_stamp: { [Op.gte]: threeHoursAgo }
+        //         },
+        //         order: [['time_stamp', 'DESC']]
+        //     });
+        //
+        //     if (recentBoardedNotification) {
+        //         // If recent notification exists, update by deleting the old one
+        //         const oldFileName = decodeURIComponent(recentBoardedNotification.image.split('/').pop().split('?')[0]);
+        //         await deleteFromAzure(oldFileName, 'notifications');
+        //         await recentBoardedNotification.destroy();
+        //     } else {
+        //         // Delete older boarded/alighted notifications for this attendance
+        //         const oldNotifications = await model.Notification.findAll({
+        //             where: {
+        //                 attendance_id,
+        //                 [Op.or]: [
+        //                     { message: { [Op.like]: '%alighted%' } },
+        //                     { message: { [Op.like]: '%boarded%' } }
+        //                 ]
+        //             }
+        //         });
+        //
+        //         for (const notification of oldNotifications) {
+        //             if (notification.image) {
+        //                 const fileName = decodeURIComponent(notification.image.split('/').pop().split('?')[0]);
+        //                 await deleteFromAzure(fileName, 'notifications');
+        //             }
+        //             await notification.destroy();
+        //         }
+        //     }
+        // } else if (status === 'alighted') {
+        //     // Delete previous alighted notifications for this attendance
+        //     const oldAlightedNotifications = await model.Notification.findAll({
+        //         where: {
+        //             attendance_id,
+        //             message: { [Op.like]: '%alighted%' }
+        //         }
+        //     });
+        //
+        //     for (const notification of oldAlightedNotifications) {
+        //         if (notification.image) {
+        //             const fileName = decodeURIComponent(notification.image.split('/').pop().split('?')[0]);
+        //             await deleteFromAzure(fileName, 'notifications');
+        //         }
+        //         await notification.destroy();
+        //     }
+        // }
 
-            const recentBoardedNotification = await model.Notification.findOne({
-                where: {
-                    attendance_id,
-                    status: 'common',
-                    message: { [Op.like]: '%boarded%' },
-                    time_stamp: { [Op.gte]: threeHoursAgo }
-                },
-                order: [['time_stamp', 'DESC']]
-            });
-
-            if (recentBoardedNotification) {
-                // If recent notification exists, update by deleting the old one
-                const oldFileName = decodeURIComponent(recentBoardedNotification.image.split('/').pop().split('?')[0]);
-                await deleteFromAzure(oldFileName, 'notifications');
-                await recentBoardedNotification.destroy();
-            } else {
-                // Delete older boarded/alighted notifications for this attendance
-                const oldNotifications = await model.Notification.findAll({
-                    where: {
-                        attendance_id,
-                        [Op.or]: [
-                            { message: { [Op.like]: '%alighted%' } },
-                            { message: { [Op.like]: '%boarded%' } }
-                        ]
-                    }
-                });
-
-                for (const notification of oldNotifications) {
-                    if (notification.image) {
-                        const fileName = decodeURIComponent(notification.image.split('/').pop().split('?')[0]);
-                        await deleteFromAzure(fileName, 'notifications');
-                    }
-                    await notification.destroy();
-                }
-            }
-        } else if (status === 'alighted') {
-            // Delete previous alighted notifications for this attendance
-            const oldAlightedNotifications = await model.Notification.findAll({
-                where: {
-                    attendance_id,
-                    message: { [Op.like]: '%alighted%' }
-                }
-            });
-
-            for (const notification of oldAlightedNotifications) {
-                if (notification.image) {
-                    const fileName = decodeURIComponent(notification.image.split('/').pop().split('?')[0]);
-                    await deleteFromAzure(fileName, 'notifications');
-                }
-                await notification.destroy();
-            }
-        }
-
+        // Tìm các notification hiện tại cho attendance_id và journey_id
+        // const existingNotifications = await model.Notification.findAll({
+        //     include: [
+        //         {
+        //             model: model.Attendance,
+        //             as: 'attendance',
+        //             where: { journey_id },
+        //             attributes: [] // Không cần dữ liệu bổ sung từ Attendance
+        //         }
+        //     ],
+        //     where: {
+        //         attendance_id
+        //     }
+        // });
         // Lấy tên học sinh từ danh sách hợp lệ
         const studentName = validStudents.find(student => student.attendance_id === parseInt(attendance_id, 10)).name;
         const message = `${studentName} has ${status === 'boarded' ? 'boarded' : 'alighted'} from the bus`;
@@ -460,6 +474,7 @@ export const createBrokenPhotoNotification = async (teacher_id, attendance_id, f
         // Tạo bản ghi Notification mới
         const newNotification = await model.Notification.create({
             attendance_id,
+            journey_id,
             time_stamp: new Date(),
             message,
             image: fileUrl,

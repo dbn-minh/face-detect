@@ -280,3 +280,110 @@ export const refreshTokenService = async (token) => {
     return { error: "Error refreshing token", status: 500 };
   }
 };
+
+
+export const changePasswordService = async (id, oldPassword, newPassword) => {
+  try {
+    // Joi schema for old password and new password validation
+    const schema = Joi.object({
+      oldPassword: Joi.string()
+        .min(8)
+        .required()
+        .messages({
+          "string.min": "Old password must be at least 8 characters long.",
+          "any.required": "Old password is required.",
+        }),
+      newPassword: Joi.string()
+        .min(8)
+        .pattern(new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?\":{}|<>])[A-Za-z0-9!@#$%^&*(),.?\":{}|<>]{8,}$"))
+        .required()
+        .messages({
+          "string.min": "Password must be at least 8 characters long.",
+          "string.pattern.base": "Password must include uppercase, lowercase, a number, and a special character.",
+          "any.required": "New password is required.",
+        }),
+    });
+
+    // Validate both old and new passwords
+    const { error } = schema.validate({ oldPassword, newPassword });
+    if (error) {
+      return {
+        status: 400,
+        message: error.details[0].message,
+      };
+    }
+
+    // Find the user by ID
+    const user = await model.User.findOne({ where: { user_id: id } });
+    if (!user) {
+      return {
+        status: 404,
+        error: "User not found",
+      };
+    }
+
+    // Verify old password
+    const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
+    console.log(isOldPasswordValid);
+    if (!isOldPasswordValid) {
+      return {
+        status: 400,
+        error: "Old password is incorrect",
+      };
+    }
+
+    // Hash and update new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    return {
+      status: 200,
+      message: "Password has been changed successfully.",
+    };
+  } catch (error) {
+    console.error(error);
+    return { error: "Error changing password", status: 500 };
+  }
+};
+
+
+// ---------------------------- Minh test upload avatar-----------------------------
+
+import axios from "axios";
+import qs from "qs";
+import dotenv from "dotenv";
+import { error } from "console";
+import { get } from "http";
+
+// Load environment variables from .env file
+dotenv.config();
+
+// Get access token from Microsoft Graph API
+export const getAccessToken = async () => {
+  const tenantId = process.env.AZURE_TENANT_ID;
+  const clientId = process.env.AZURE_CLIENT_ID;
+  const clientSecret = process.env.AZURE_CLIENT_SECRET;
+  const scopes = "https://graph.microsoft.com/.default";
+
+  const tokenEndpoint = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+
+  const data = qs.stringify({
+    grant_type: "client_credentials",
+    client_id: clientId,
+    client_secret: clientSecret,
+    scope: scopes,
+  });
+
+  try {
+    const response = await axios.post(tokenEndpoint, data, {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    });
+    return response.data.access_token; // Return the access token
+  } catch (error) {
+    console.error("Error fetching access token:", error.message);
+    throw new Error("Failed to get access token");
+  }
+};
