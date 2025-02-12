@@ -181,6 +181,9 @@ export const loginService = async (email, password) => {
       "any.required": "Password is required",
     }),
   });
+
+  console.log("Type of email:", typeof email);  // Kiểm tra xem email có phải là string không
+
   // Validate the input
   const { error } = schema.validate({ email, password });
 

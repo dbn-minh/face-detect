@@ -50,8 +50,8 @@ export default class AuthController {
 
   static async login(req, res) {
     const { email, password } = req.body;
+
     const { error, data, status } = await service.loginService(
-      res,
       email,
       password
     );

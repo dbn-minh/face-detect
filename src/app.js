@@ -8,11 +8,11 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(cookieParser()); // allows us to parse incoming cookies
-
 app.use(express.urlencoded({ extended: true }));
 
 // Use the routes defined in the routes folder
 app.use('/', router);
+
 
 // Test the database connection
 sequelize.authenticate()
