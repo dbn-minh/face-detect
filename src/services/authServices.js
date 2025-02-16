@@ -376,7 +376,13 @@ export const loginService = async (res, email, password) => {
       await user.save();  
       setCookie(res, token);
 
-      return { data: token, status: 200 };
+      return {
+        data: {
+          token,
+          user_id: user.user_id,
+          role_id: user.role_id,
+        },
+        status: 200 };
     } else {
       return { error: "Incorrect email or password", status: 400 };
     }
