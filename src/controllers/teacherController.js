@@ -1,6 +1,6 @@
 import {responseData} from "../config/response.js";
 import * as service from '../services/teacherServices.js';
-import {deleteFromAzure, uploadToAzure} from "../config/azureService.js";
+import {deleteFromAzure, uploadNotificationsToAzure} from "../config/azureService.js";
 
 export default class TeacherController {
     static async getHomepage(req, res) {
@@ -116,7 +116,7 @@ export default class TeacherController {
             const entityType = 'notification';
             const fileName = `${entityType}-journey_id=${journey_id}-status=${status}-attendanceId=${attendance_id}-teacherId=${teacher_id}-${Date.now()}-${file.originalname}`;
 
-            const fileUrl = await uploadToAzure(req.file.buffer, fileName);
+            const fileUrl = await uploadNotificationsToAzure(req.file.buffer, fileName);
 
             const newNotification = await service.createBrokenPhotoNotification(teacher_id, attendance_id, fileUrl, status, validStudents, journey_id);
             // Handle error, delete picture uploaded
@@ -155,7 +155,7 @@ export default class TeacherController {
             const status = 'alert';
             const fileName = `${entityType}-journey_id=${journey_id}-status=${status}-attendanceId=${attendance_id}-teacherId=${teacher_id}-${Date.now()}-${file.originalname}`;
 
-            const fileUrl = await uploadToAzure(req.file.buffer, fileName);
+            const fileUrl = await uploadNotificationsToAzure(req.file.buffer, fileName);
             // Tạo thông báo khẩn cấp mới
             const emergencyNotification = await service.createEmergencyNotification(teacher_id, attendance_id, fileUrl, validStudents, journey_id);
 

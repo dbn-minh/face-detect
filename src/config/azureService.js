@@ -13,7 +13,7 @@ if (!AZURE_STORAGE_CONNECTION_STRING) {
 const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
 
 // Hàm upload cho 'notifications' container
-export const uploadToAzure = async (fileBuffer, fileName, containerName = 'notifications') => {
+export const uploadNotificationsToAzure = async (fileBuffer, fileName, containerName = 'notifications') => {
     const containerClient = blobServiceClient.getContainerClient(containerName);
 
     await containerClient.createIfNotExists({ access: "container" });
@@ -46,7 +46,7 @@ export const uploadAvatarToAzure = async (fileBuffer, fileName) => {
     return blockBlobClient.url;
 };
 
-export const deleteFromAzure = async (fileName, containerName = 'avatars') => {
+export const deleteFromAzure = async (fileName, containerName ) => {
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const blockBlobClient = containerClient.getBlockBlobClient(fileName);
 
@@ -61,3 +61,23 @@ export const deleteFromAzure = async (fileName, containerName = 'avatars') => {
         console.error(`Failed to delete file ${fileName} from Azure: ${error.message}`);
     }
 };
+
+export const uploadBiometricToAzure = async (fileBuffer, fileName, containerName = 'biometric', subFolder = '') => {
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+
+    await containerClient.createIfNotExists({ access: "container" });
+
+    // Thêm subFolder vào đường dẫn nếu có
+    const blobName = subFolder ? `${subFolder}/${fileName}` : fileName;
+
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+    // Upload file buffer lên blob
+    await blockBlobClient.uploadData(fileBuffer, {
+        blobHTTPHeaders: { blobContentType: "image/jpeg" }
+    });
+
+    // Trả về URL của blob mà không cần thêm SAS token
+    return blockBlobClient.url;
+};
+

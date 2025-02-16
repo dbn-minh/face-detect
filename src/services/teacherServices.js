@@ -452,20 +452,21 @@ export const createBrokenPhotoNotification = async (teacher_id, attendance_id, f
         //         await notification.destroy();
         //     }
         // }
+
         // Tìm các notification hiện tại cho attendance_id và journey_id
-        const existingNotifications = await model.Notification.findAll({
-            include: [
-                {
-                    model: model.Attendance,
-                    as: 'attendance',
-                    where: { journey_id },
-                    attributes: [] // Không cần dữ liệu bổ sung từ Attendance
-                }
-            ],
-            where: {
-                attendance_id
-            }
-        });
+        // const existingNotifications = await model.Notification.findAll({
+        //     include: [
+        //         {
+        //             model: model.Attendance,
+        //             as: 'attendance',
+        //             where: { journey_id },
+        //             attributes: [] // Không cần dữ liệu bổ sung từ Attendance
+        //         }
+        //     ],
+        //     where: {
+        //         attendance_id
+        //     }
+        // });
         // Lấy tên học sinh từ danh sách hợp lệ
         const studentName = validStudents.find(student => student.attendance_id === parseInt(attendance_id, 10)).name;
         const message = `${studentName} has ${status === 'boarded' ? 'boarded' : 'alighted'} from the bus`;

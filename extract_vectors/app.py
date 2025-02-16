@@ -25,6 +25,10 @@ def return_128d_features_from_url(url):
 
         # Convert from RGB (PIL) to BGR (OpenCV)
         img_rd = cv2.cvtColor(img_rd, cv2.COLOR_RGB2BGR)
+        
+        # Resize for better face detection (optional)
+        scale = 1.5
+        img_rd = cv2.resize(img_rd, (0, 0), fx=scale, fy=scale)
 
         # Detect faces in the image
         faces = detector(img_rd, 1)
@@ -34,40 +38,43 @@ def return_128d_features_from_url(url):
             shape = predictor(img_rd, faces[0])
             face_descriptor = face_reco_model.compute_face_descriptor(img_rd, shape)
             face_descriptor = np.array(face_descriptor)
-            feature_vector_str = ','.join(map(str, face_descriptor))  # Convert to string for API response
-            return feature_vector_str
+            return face_descriptor
         else:
-            logging.warning("No face detected in the image.")
+            logging.warning(f"No face detected in the image from URL: {url}")
             return None
     except Exception as e:
-        logging.error(f"Error processing image from URL: {e}")
+        logging.error(f"Error processing image from URL: {url}: {str(e)}")
         return None
 
 @app.route('/extract-vector', methods=['POST'])
 def extract_vector():
     data = request.json
-    file_url = data.get('fileUrl')
+    file_urls = data.get('imageUrls')  # Expecting an array of URLs
 
-    if not file_url:
-        return jsonify({'message': 'File URL is missing'}), 400
+    if not file_urls or not isinstance(file_urls, list):
+        return jsonify({'message': 'fileUrls must be a list of image URLs'}), 400
 
     try:
-        # Log the received file URL
-        print(f"Received fileUrl: {file_url}")
+        # Initialize a list to store feature vectors
+        features_list = []
 
-        # Extract the 128D feature vector
-        feature_vector = return_128d_features_from_url(file_url)
-
-        if feature_vector is None:
-            return jsonify({'message': 'No face detected or processing error occurred.'}), 400
-
-        # Log the extracted feature vector
-        print(f"Extracted feature vector: {feature_vector}")
-
-        return jsonify({'featureVector': feature_vector}), 200
+        # Process each URL
+        for url in file_urls:
+            # logging.info(f"Processing URL: {url}")
+            feature_vector = return_128d_features_from_url(url)
+            if feature_vector is not None:
+                features_list.append(feature_vector)
+        print(features_list)
+        if features_list:
+            # Calculate the mean feature vector
+            features_mean = np.array(features_list, dtype=object).mean(axis=0)
+            feature_vector_str = ','.join(map(str, features_mean))
+            return jsonify({'meanFeatureVector': feature_vector_str}), 200
+        else:
+            return jsonify({'message': 'No valid faces detected in the provided images'}), 400
 
     except Exception as e:
-        return jsonify({'message': f"Error extracting feature vector: {str(e)}"}), 500
+        return jsonify({'message': f"Error processing feature vectors: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000)
