@@ -1,5 +1,5 @@
 import express from 'express';
-import DriverController from '../controllers/DriverController.js';
+import DriverController from '../controllers/driverController.js';
 import upload from "../config/multer.js";
 
 const router = express.Router();
