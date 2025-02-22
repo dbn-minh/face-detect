@@ -1,5 +1,5 @@
 import express from 'express';
-import ParentController from '../controllers/ParentController.js';
+import ParentController from '../controllers/parentController.js';
 import {
     checkRefToken,
     checkToken,
