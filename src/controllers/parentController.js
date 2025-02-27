@@ -190,22 +190,22 @@ export default class ParentController {
         const files = req.files;
         const imageUrls = [];
 
-        if (!files || files.length !== 5) {
+        if (!files || files.length !== 3) {
             return responseData(res, 'Please upload exactly 3 images.', null, 400);
         }
 
         try {
-            // Lấy thêm thông tin của học sinh từ database
+            // get information of student from database 
             const {student_id, name} = await getStudentIdByParentId(parent_id);
 
-            // Tạo subFolder theo student_id
+            // create subFolder according to student_id
             const containerName = 'biometric';
             const subFolder = `student_id=${student_id}`;
             const projectCode = 'STUDENT_TRACKING';
             const entityType = 'feature-vector';
             const imageUrls = [];
 
-            // Upload từng file vào subFolder
+            // Upload each file into subFolder
             for (const file of files) {
                 const fileName = `${projectCode}-${entityType}-${Date.now()}-${file.originalname}`;
                 const fileUrl = await uploadBiometricToAzure(file.buffer, fileName, containerName, subFolder);
