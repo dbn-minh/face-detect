@@ -33,7 +33,6 @@ export const sendWelcomeEmail = async (email, name) => {
 			from: sender,
 			to: recipient,
 			template_uuid: "69345a83-8206-41a8-af83-d717d46514e3",
-			// template_uuid: "e65925d1-a9d1-4a40-ae7c-d92b37d593df",
 			template_variables: {
 				company_info_name: "Student-tracking App",
 				name: name,
