@@ -48,6 +48,17 @@ export default class AuthController {
     return responseData(res, message, data, status);
   }
 
+  static async resetForgotPasswordToken(req, res) {
+    const { email } = req.body;
+    const { error, message, data, status } =
+      await service.resetForgotPasswordTokenService(email);
+
+    if (error) {
+      return responseData(res, error, "", status);
+    }
+    return responseData(res, message, data, status);
+  }
+
   static async login(req, res) {
     const { email, password } = req.body;
     const { error, data, status } = await service.loginService(

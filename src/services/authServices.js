@@ -173,6 +173,43 @@ export const resetVerificationTokenService = async (email) => {
   }
 };
 
+
+export const resetForgotPasswordTokenService = async (email) => {
+  try {
+    // Find the user with the specified email and unverified status
+    const user = await model.User.findOne({
+      where: {
+        email,
+        isVerified: true,
+      },
+    });
+
+    if (!user) {
+      return { status: 404, error: "User not found or already verified" };
+    }
+
+    // Generate a new verification token and set expiration time
+    const newVerificationToken = Math.floor(100000 + Math.random() * 900000).toString();
+    user.verificationToken = newVerificationToken;
+    user.verificationTokenExpiresAt = Date.now() +   60 * 1000; // Expires in 60 seconds 
+
+    // Save the updated user with the new token
+    await user.save();
+
+    // Resend verification email with the new token
+    await sendVerificationEmail(user.email, newVerificationToken);
+
+    return {
+      data: newVerificationToken,
+      status: 200,
+      message: "Verification token has been reset and email sent",
+    };
+  } catch (error) {
+    console.error(error);
+    return { error: "Error resetting verification token", status: 500 };
+  }
+};
+
 export const forgetPasswordService = async (email) => {
   try {
     // Find the user with the specified email and unverified status
@@ -316,16 +353,16 @@ export const verifyEmailService = async (code, res) => {
     let key = new Date().getTime();
     let token = createToken({ user_id: user.user_id, key });
     let ref_token = createRefToken({ user_id: user.user_id, key });
-
-      user.refresh_token = ref_token
-      user.lastLogin = new Date();
-      user.isVerified = true;
-      user.verificationToken = null;
-      user.verificationTokenExpiresAt = null;
-      await user.save();  
-
-      setCookie(res, token);
-
+    
+    
+    user.refresh_token = ref_token
+    user.lastLogin = new Date();
+    user.isVerified = true;
+    user.verificationToken = null;
+    user.verificationTokenExpiresAt = null;
+    await user.save();  
+    
+    setCookie(res, token);
 
 		await sendWelcomeEmail(user.email, user.name);
     return {
@@ -401,7 +438,7 @@ export const logoutService = async (req, res) => {
     // let access_token = decodeToken(token);
     let access_token = decodeToken(req.cookies.token);
 
-    // Check if the token was decoded succe                     ssfully
+    // Check if the token was decoded successfully
     if (!access_token || !access_token.data || !access_token.data.user_id) {
       return { error: "Invalid token or missing user data in token", status: 400 };
     }
