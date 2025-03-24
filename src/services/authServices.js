@@ -176,7 +176,7 @@ export const resetVerificationTokenService = async (email) => {
 
 export const resetForgotPasswordTokenService = async (email) => {
   try {
-    // Find the user with the specified email and unverified status
+    // Find the user with the specified email and verified status
     const user = await model.User.findOne({
       where: {
         email,
@@ -212,7 +212,7 @@ export const resetForgotPasswordTokenService = async (email) => {
 
 export const forgetPasswordService = async (email) => {
   try {
-    // Find the user with the specified email and unverified status
+    // Find the user with the specified email and verified status
     const user = await model.User.findOne({
       where: {
         email,
