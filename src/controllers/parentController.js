@@ -30,7 +30,7 @@ export default class ParentController {
 
       try {
         // Get student_ids by parent_id
-        const students = await service.getAllStudentsInformationByParentId(parent_id);
+        const students = await service.getAllChildrenInformationByParentId(parent_id);
 
         // If no students found
         if (!students || students.length === 0) {
