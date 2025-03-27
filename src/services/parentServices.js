@@ -157,14 +157,15 @@ export const getNotificationsByParentId = async (parent_id) => {
             ],
         });
 
-        let notificationsByStudent = {};
+        let notificationsByStudent = [];
 
         // Loop through notifications to organize by student and prioritize alert messages, bus breakdowns, and general notifications
         studentNotifications.forEach((record) => {
             const student = record.student;
             const attendances = student.Attendances;
 
-            notificationsByStudent[student.student_id] = {
+            // Create an entry for each student in the notifications array
+            const studentNotification = {
                 student_id: student.student_id,
                 student_name: student.name,
                 alert_messages: [],
@@ -177,8 +178,8 @@ export const getNotificationsByParentId = async (parent_id) => {
                 const bus = attendance.journey?.bus;
 
                 // Check if the bus is broken and set bus breakdown info if applicable
-                if (bus && bus.status === 'broken' && !notificationsByStudent[student.student_id].bus_breakdown_info) {
-                    notificationsByStudent[student.student_id].bus_breakdown_info = {
+                if (bus && bus.status === 'broken' && !studentNotification.bus_breakdown_info) {
+                    studentNotification.bus_breakdown_info = {
                         message: "The bus has broken down and is not operational.",
                         bus_id: bus.bus_id,
                         license_plate: bus.license_plate,
@@ -189,14 +190,14 @@ export const getNotificationsByParentId = async (parent_id) => {
                 // Collect alert and general notifications separately
                 notifications.forEach((notification) => {
                     if (notification.status === 'alert') {
-                        notificationsByStudent[student.student_id].alert_messages.push({
+                        studentNotification.alert_messages.push({
                             message: notification.message,
                             notification_id: notification.notification_id,
                             time_stamp: notification.time_stamp,
                             image: notification.image || null
                         });
                     } else {
-                        notificationsByStudent[student.student_id].general_notifications.push({
+                        studentNotification.general_notifications.push({
                             message: notification.message,
                             notification_id: notification.notification_id,
                             time_stamp: notification.time_stamp,
@@ -206,9 +207,13 @@ export const getNotificationsByParentId = async (parent_id) => {
                     }
                 });
             });
+
+            // Push the constructed student notification to the array
+            notificationsByStudent.push(studentNotification);
         });
 
         return notificationsByStudent;
+
     } catch (error) {
         throw new Error('Error fetching notifications: ' + error.message);
     }
