@@ -14,7 +14,7 @@ import photoUpload from "../config/multer.js";
 
 router.get('/v1/home/:parent_id', ParentController.getParentHome);
 // router.get('/photo/:parent_id', ParentController.getEmergencyPhoto);
-router.get('/v1/student/:parent_id', ParentController.getStudentInformation);
+router.get('/v1/children/:parent_id', ParentController.getChildrenInformation);
 router.get('/v1/notification/:parent_id', ParentController.getNotifications);
 router.get('/v1/setting/:parent_id', ParentController.getParentSetting);
 router.put('/v1/setting/:parent_id', ParentController.updateParentSetting);

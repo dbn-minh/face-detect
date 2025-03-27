@@ -2,12 +2,24 @@ import initModels from "../models/init-models.js";
 import sequelize from "../config/database.js";
 let model = initModels(sequelize);
 
-export const getAllStudentsInformationByParentId = async (parent_id) => {
+export const getAllChildrenInformationByParentId = async (parent_id) => {
     try {
         const studentInfo = await model.Student_Parent.findAll({
             where: { parent_id: parent_id },
             attributes: ['student_id'],
             include: [
+                {
+                    model: model.Parent,
+                    as: 'parent',
+                    attributes: ['parent_id', 'user_id', "address", "relationship"],
+                    include: [
+                        {
+                            model: model.User,
+                            as: 'user',
+                            attributes: ['user_id', 'name', 'phone_number', 'email'],
+                        }
+                    ]
+                },
                 {
                     model: model.Student,
                     as: 'student',
@@ -55,6 +67,20 @@ export const getAllStudentsInformationByParentId = async (parent_id) => {
             name: record.student.name,
             class: record.student.class,
             avatar: record.student.avatar,
+            parent: record.parent
+                ? {
+                    parent_id: record.parent.user_id,
+                    "Parent information": record.parent
+                        ?{
+                            address: record.parent.address,
+                            relationship: record.parent.relationship,
+                            name: record.parent.user.name,
+                            phone_number: record.parent.user.phone_number,
+                            email: record.parent.user.email,
+                        }
+                        :null,
+                }
+                :null,
             bus: record.student.bus
                 ? {
                     bus_id: record.student.bus.bus_id,
@@ -64,7 +90,6 @@ export const getAllStudentsInformationByParentId = async (parent_id) => {
                             teacher_id: record.student.bus.teacher.teacher_id,
                             "Teacher information": record.student.bus.teacher.user
                                 ? {
-                                    user_id: record.student.bus.teacher.user.user_id,
                                     name: record.student.bus.teacher.user.name,
                                     phone_number: record.student.bus.teacher.user.phone_number,
                                     email: record.student.bus.teacher.user.email,
@@ -77,7 +102,6 @@ export const getAllStudentsInformationByParentId = async (parent_id) => {
                             driver_id: record.student.bus.driver.driver_id,
                             "Driver information": record.student.bus.driver.user
                                 ? {
-                                    user_id: record.student.bus.driver.user.user_id,
                                     name: record.student.bus.driver.user.name,
                                     phone_number: record.student.bus.driver.user.phone_number,
                                     email: record.student.bus.driver.user.email,
@@ -133,14 +157,16 @@ export const getNotificationsByParentId = async (parent_id) => {
             ],
         });
 
-        let notificationsByStudent = {};
+        let notificationsByStudent = [];
 
         // Loop through notifications to organize by student and prioritize alert messages, bus breakdowns, and general notifications
         studentNotifications.forEach((record) => {
             const student = record.student;
             const attendances = student.Attendances;
 
-            notificationsByStudent[student.student_id] = {
+            // Create an entry for each student in the notifications array
+            const studentNotification = {
+                student_id: student.student_id,
                 student_name: student.name,
                 alert_messages: [],
                 bus_breakdown_info: null,
@@ -152,8 +178,8 @@ export const getNotificationsByParentId = async (parent_id) => {
                 const bus = attendance.journey?.bus;
 
                 // Check if the bus is broken and set bus breakdown info if applicable
-                if (bus && bus.status === 'broken' && !notificationsByStudent[student.student_id].bus_breakdown_info) {
-                    notificationsByStudent[student.student_id].bus_breakdown_info = {
+                if (bus && bus.status === 'broken' && !studentNotification.bus_breakdown_info) {
+                    studentNotification.bus_breakdown_info = {
                         message: "The bus has broken down and is not operational.",
                         bus_id: bus.bus_id,
                         license_plate: bus.license_plate,
@@ -164,14 +190,14 @@ export const getNotificationsByParentId = async (parent_id) => {
                 // Collect alert and general notifications separately
                 notifications.forEach((notification) => {
                     if (notification.status === 'alert') {
-                        notificationsByStudent[student.student_id].alert_messages.push({
+                        studentNotification.alert_messages.push({
                             message: notification.message,
                             notification_id: notification.notification_id,
                             time_stamp: notification.time_stamp,
                             image: notification.image || null
                         });
                     } else {
-                        notificationsByStudent[student.student_id].general_notifications.push({
+                        studentNotification.general_notifications.push({
                             message: notification.message,
                             notification_id: notification.notification_id,
                             time_stamp: notification.time_stamp,
@@ -181,9 +207,13 @@ export const getNotificationsByParentId = async (parent_id) => {
                     }
                 });
             });
+
+            // Push the constructed student notification to the array
+            notificationsByStudent.push(studentNotification);
         });
 
         return notificationsByStudent;
+
     } catch (error) {
         throw new Error('Error fetching notifications: ' + error.message);
     }
@@ -193,7 +223,7 @@ export const getNotificationsByParentId = async (parent_id) => {
 
 export const getSetting = async (parent_id) => {
     try {
-        return await model.Student_Parent.findAll({
+        const setting =  await model.Student_Parent.findAll({
             where: { parent_id: parent_id },
             attributes: ['student_id'],
             include: [
@@ -223,6 +253,27 @@ export const getSetting = async (parent_id) => {
                 }
             ]
         });
+        // Map the result to structure the payload
+        return setting.map((record) => ({
+            student_id: record.student_id,
+            student_name: record.student.name,
+            student_class: record.student.class,
+            student_avatar: record.student.avatar,
+            student_feature_vector: record.student.feature_vector,
+            bus: record.student.bus
+                ? {
+                    bus_id: record.student.bus.bus_id,
+                    license_plate: record.student.bus.license_plate
+                }
+                : null,
+            parent: record.parent
+                ? {
+                    parent_address: record.parent.address,
+                    phone_number: record.parent.user.phone_number
+                }
+                : null
+        }));
+
     } catch (error) {
         throw new Error('Error fetching students for parent: ' + error.message);
     }
