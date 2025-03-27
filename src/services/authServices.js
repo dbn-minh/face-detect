@@ -13,12 +13,12 @@ import {
   decodeToken,
   setCookie
 } from "../config/jwt.js";
-import {
-	sendPasswordResetEmail,
-	sendResetSuccessEmail,
-	sendVerificationEmail,
-	sendWelcomeEmail,
-} from "../mailtrap/emails.js";
+// import {
+// 	sendPasswordResetEmail,
+// 	sendResetSuccessEmail,
+// 	sendVerificationEmail,
+// 	sendWelcomeEmail,
+// } from "../mailtrap/emails.js";
 import Joi from "joi";
 
 let model = initModels(sequelize);
@@ -58,7 +58,7 @@ export const signupService = async (email, password, role_id, name, phone_number
         await existingUser.save();
 
         // Resend verification email
-        await sendVerificationEmail(existingUser.email, verificationToken);
+        // await sendVerificationEmail(existingUser.email, verificationToken);
 
         return {
           status: 200,
@@ -127,7 +127,7 @@ export const signupService = async (email, password, role_id, name, phone_number
     }
 
     // Send verification email
-    await sendVerificationEmail(newUser.email, verificationToken);
+    // await sendVerificationEmail(newUser.email, verificationToken);
 
     return { data: newUser, status: 200, message: "Account created successfully. A verification email has been sent." };
 
@@ -160,7 +160,7 @@ export const resetVerificationTokenService = async (email) => {
     await user.save();
 
     // Resend verification email with the new token
-    await sendVerificationEmail(user.email, newVerificationToken);
+    // await sendVerificationEmail(user.email, newVerificationToken);
 
     return {
       data: newVerificationToken,
@@ -197,7 +197,7 @@ export const resetForgotPasswordTokenService = async (email) => {
     await user.save();
 
     // Resend verification email with the new token
-    await sendVerificationEmail(user.email, newVerificationToken);
+    // await sendVerificationEmail(user.email, newVerificationToken);
 
     return {
       data: newVerificationToken,
@@ -233,7 +233,7 @@ export const forgetPasswordService = async (email) => {
     await user.save();
 
     // Resend verification email with the new token
-    await sendPasswordResetEmail(user.email, newVerificationToken);
+    // await sendPasswordResetEmail(user.email, newVerificationToken);
 
     return {
       data: newVerificationToken,
@@ -320,7 +320,7 @@ export const resetPasswordService = async (code, newPassword) => {
     user.verificationTokenExpiresAt = null;
     await user.save();
 
-    await sendResetSuccessEmail(user.email);
+    // await sendResetSuccessEmail(user.email);
     return {
       status: 200,
       message: "Password has been reset successfully.",
@@ -364,7 +364,7 @@ export const verifyEmailService = async (code, res) => {
     
     setCookie(res, token);
 
-		await sendWelcomeEmail(user.email, user.name);
+		// await sendWelcomeEmail(user.email, user.name);
     return {
       data: token,
       status: 200,
