@@ -397,13 +397,13 @@ export default class service {
     static async updateDriverInfo(user_id, { name, phone_number, email, license_number }) {
         try {
             // Check if the license plate already exists
-            const existingBus = await getExistingBusByLicensePlate(license_plate);
-            if (existingBus) {
-                return {
-                    message: 'Bus with this license plate already exists.',
-                    bus: existingBus
-                };
-            }
+            // const existingBus = await getExistingBusByLicensePlate(license_plate);
+            // if (existingBus) {
+            //     return {
+            //         message: 'Bus with this license plate already exists.',
+            //         bus: existingBus
+            //     };
+            // }
 
             // Find the driver along with the associated user
             const driver = await model.Driver.findOne({

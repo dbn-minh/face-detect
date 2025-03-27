@@ -6,7 +6,8 @@ import {
     uploadAvatarToAzure,
     uploadBiometricToAzure
 } from "../config/azureService.js";
-import axios from 'axios'; // Use ES Module import
+import axios from 'axios';
+import {getAllChildrenInformationByParentId} from "../services/parentServices.js"; // Use ES Module import
 
 
 export default class ParentController {
@@ -65,10 +66,10 @@ export default class ParentController {
     //   }
     // }
 
-    static async getStudentInformation(req, res) {
+    static async getChildrenInformation(req, res) {
         const parent_id = req.params.parent_id;
         try {
-        const students = await service.getAllStudentsInformationByParentId(parent_id);
+        const students = await service.getAllChildrenInformationByParentId(parent_id);
 
         if (!students || students.length === 0) {
           return responseData(res, 'Fail', 'No students found for this parent', 404);
