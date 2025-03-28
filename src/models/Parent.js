@@ -25,7 +25,7 @@ export default class Parent extends Model {
     },
     relationship: {
       type: DataTypes.ENUM('Father','Mother','Other'),
-      allowNull: false
+      allowNull: true
     }
   }, {
     sequelize,

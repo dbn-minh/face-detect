@@ -6,12 +6,11 @@ export default class AuthController {
     const {
       email,
       password,
-      name,
       phone_number,
       role_id,
-      other,
-      relationship,
     } = req.body;
+    const name = "Fill your name here"
+    const other = "Fill your information here"
     const { error, data, status } = await service.signupService(
       email,
       password,
@@ -19,7 +18,6 @@ export default class AuthController {
       name,
       phone_number,
       other,
-      relationship
     );
 
     if (error) {

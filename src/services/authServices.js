@@ -23,7 +23,7 @@ import Joi from "joi";
 
 let model = initModels(sequelize);
 
-export const signupService = async (email, password, role_id, name, phone_number, other, relationship) => {
+export const signupService = async (email, password, role_id, name, phone_number, other) => {
   // Partial schema for initial email and password validation
   const initialSchema = Joi.object({
     email: Joi.string().email().required(),
@@ -91,12 +91,12 @@ export const signupService = async (email, password, role_id, name, phone_number
         ],
         otherwise: Joi.forbidden(),
       }),
-      relationship: Joi.string()
-        .valid("Father", "Mother", "Other")
-        .when("role_id", { is: 1, then: Joi.required(), otherwise: Joi.forbidden() }),
+      // relationship: Joi.string()
+      //   .valid("Father", "Mother", "Other")
+      //   .when("role_id", { is: 1, then: Joi.required(), otherwise: Joi.forbidden() }),
     });
 
-    const { error: fullError } = fullSchema.validate({ role_id, name, phone_number, email, password, other, relationship });
+    const { error: fullError } = fullSchema.validate({ role_id, name, phone_number, email, password, other });
 
     if (fullError) {
       return { error: fullError.details[0].message, status: 400 };
@@ -116,7 +116,7 @@ export const signupService = async (email, password, role_id, name, phone_number
     // Create associated record based on role_id
     switch (role_id) {
       case 1: // Parent
-        await model.Parent.create({ address: other, relationship, user_id: newUser.user_id });
+        await model.Parent.create({ address: other, user_id: newUser.user_id });
         break;
       case 2: // Driver
         await model.Driver.create({ license_number: other, user_id: newUser.user_id });
