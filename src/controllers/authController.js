@@ -5,11 +5,11 @@ export default class AuthController {
   static async signup(req, res) {
     const {
       email,
+      name,
       password,
       phone_number,
       role_id,
     } = req.body;
-    const name = "Fill your name here"
     const other = "Fill your information here"
     const { error, data, status } = await service.signupService(
       email,
